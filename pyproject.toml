@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amz-flywheel"
+version = "0.1.0"
+description = "Zero-OAuth, local-first Python econometric package and FastMCP server quantifying the causal Amazon Paid-to-Organic Search Flywheel."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "AMZ Flywheel Econometrics Team", email = "engineering@amz-flywheel.dev" }
+]
+keywords = [
+    "amazon",
+    "ppc",
+    "sponsored-products",
+    "search-query-performance",
+    "econometrics",
+    "adstock",
+    "mcp",
+    "fastmcp",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.0.0",
+    "typer>=0.9.0",
+    "fastmcp>=0.4.0",
+    "openpyxl>=3.1.0",
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "cython>=3.0.0",
+]
+
+[project.scripts]
+amz-flywheel = "amz_flywheel.cli:app"
+amz-flywheel-mcp = "amz_flywheel.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amz_flywheel"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,5 @@
+"Date range","Campaign name","Ad group name","Search term","Targeting match type","Impressions","Clicks","Total cost","Sales","Purchases"
+"2026-10-18 - 2026-10-24","SP_Exact_Core","AG_Magnesium","magnesium glycinate 400mg","EXACT","8,000","260","$390.75","$1,820.00","52"
+"2026-10-18 - 2026-10-24","SP_Phrase_Growth","AG_Sleep","organic sleep aid capsules","PHRASE","3,500","130","$156.00","$560.00","16"
+"2026-10-18 - 2026-10-24","SP_Broad_Discovery","AG_Powder","chelated magnesium powder","BROAD","2,400","90","$135.00","$210.00","6"
+"2026-10-18 - 2026-10-24","SP_Auto_Catchall","AG_General","magnesium supplement","BROAD","5,000","80","$96.00","$280.00","8"

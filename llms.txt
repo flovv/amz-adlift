@@ -1,0 +1,114 @@
+# amz-flywheel — LLM & AI Agent Grounding Specification (llms.txt)
+
+> Zero-OAuth, local-first Python econometric library (`amz-flywheel`), Cython Pro binary engine (`amz_flywheel_pro`), and FastMCP server (`amz-flywheel-mcp`) quantifying the causal Amazon Paid-to-Organic Search Flywheel.
+
+## 1. Agent Execution Protocol (Recommended Tool Sequence)
+
+When a user asks to analyze Amazon PPC / Brand Analytics SQP / Keyword Rank data or optimize Sponsored Products bids:
+
+1. **Step 1 — Run the Local Audit (`audit_amazon_flywheel`)**:
+   - Pass `sqp_csv_path`, `ads_csv_path`, optional `rank_csv_path`, `category` (`"general"`, `"supplements"`, `"electronics"`, `"home_kitchen"`, `"beauty"`, `"pet_supplies"`, `"apparel"`), and `product_margin` (decimal fraction, e.g., `0.38` for 38%).
+   - For accounts with >500 keywords, pass `include_raw_panel=False` to prevent LLM context window overflow.
+   - Note: `audit_amazon_flywheel` persists the aligned panel and fitted elasticities to `~/.amz_flywheel/last_audit_state.json`, so subsequent MCP tool calls automatically have access to the audited dataset even across process restarts.
+
+2. **Step 2 — Simulate Counterfactual Bid Cuts (`simulate_keyword_bid_cut`)**:
+   - Call this tool on `CANNIBALIZED_RENT`, `FLYWHEEL_LEVERAGE`, or `AT_RISK_DECAY` keywords to inspect the 21-day (`horizon_weeks=3`) organic rank trajectory (`projected_ranks`) and net organic profit impact (`net_profit_impact_21d`) under `-25%`, `-50%`, and `-100%` PPC spend cuts.
+   - `spend_change_pct` should be a negative decimal fraction (e.g., `-0.50` for a 50% cut; values like `-50` are auto-normalized to `-0.50`).
+
+3. **Step 3 — Export Bulk Operations Spreadsheet (`export_ads_bulksheet`)**:
+   - Call `export_ads_bulksheet(output_path="./reports/bulk_update.xlsx", max_bid_change_pct=0.25)` to write an Amazon Ads Sponsored Products `.xlsx` bulk file with `Operation = "Update"` and clamped Halo-Adjusted Break-Even bids.
+
+---
+
+## 2. FastMCP Tools, Resources & Prompts Reference
+
+### Tool: `audit_amazon_flywheel`
+```python
+def audit_amazon_flywheel(
+    sqp_csv_path: str,
+    ads_csv_path: str,
+    rank_csv_path: Optional[str] = None,
+    category: str = "general",
+    product_margin: float = 0.35,
+    include_raw_panel: bool = True,
+) -> dict[str, Any]
+```
+**Returns (`AuditReport` JSON)**:
+- `asin` (`str`): Primary audited ASIN or Brand identifier.
+- `pro_enabled` (`bool`): Whether `amz_flywheel_pro` Cython extension is active.
+- `quadrant_counts` (`dict[str, int]`): Count of keywords in `CANNIBALIZED_RENT`, `FLYWHEEL_LEVERAGE`, `TREADMILL_DEAD_WEIGHT`, `AT_RISK_DECAY`, `INSUFFICIENT_DATA`.
+- `keywords` (`list[KeywordQuadrantDiagnostic]`): Per-keyword metrics including `median_organic_rank_4w`, `organic_cvr_4w`, `sqp_cvr_4w`, `weekly_ad_spend_avg`, `rank_velocity_slope`, `lagged_paid_to_organic_corr`, `true_paid_order_share`, `diagnostic_summary`, and `pro_metrics` (`theta_hat`, `theta_eb`, `lambda_decay`, `organic_multiplier_21d`, `halo_break_even_acos`).
+- `quadrant_playbook` (`dict[str, dict]`): Actionable interpretation and bid direction for each quadrant.
+
+### Tool: `simulate_keyword_bid_cut`
+```python
+def simulate_keyword_bid_cut(
+    search_query: str,
+    asin: str,
+    spend_change_pct: float = -0.50,
+    horizon_weeks: int = 3,
+) -> dict[str, Any]
+```
+**Returns**:
+- `initial_rank` (`float`), `projected_ranks` (`list[float]`), `terminal_rank` (`float`)
+- `projected_organic_orders` (`list[float]`)
+- `organic_profit_loss_21d` (`float`), `ad_spend_saved_21d` (`float`), `net_profit_impact_21d` (`float`)
+- `scenarios` (`dict`): Pre-computed `-25%`, `-50%`, and `-100%` spend cut projections.
+
+### Tool: `export_ads_bulksheet`
+```python
+def export_ads_bulksheet(
+    output_path: str,
+    max_bid_change_pct: float = 0.25,
+) -> dict[str, Any]
+```
+
+### Tool: `optimize_budget_allocation`
+```python
+def optimize_budget_allocation(
+    total_weekly_budget: Optional[float] = None,
+) -> dict[str, Any]
+```
+**Returns**:
+- `product_margin` (`float`), `break_even_marginal_roas` (`float`)
+- `total_current_spend` (`float`), `total_allocated_spend` (`float`)
+- `projected_weekly_profit_lift` (`float`)
+- `allocations` (`list[dict]`): Per-keyword `current_weekly_spend`, `allocated_weekly_spend`, `spend_delta`, `average_paid_roas_current`, `marginal_total_roas_current`, `marginal_total_roas_allocated`, and `expected_weekly_profit_change`.
+
+### Tool: `analyze_amc_clean_room`
+```python
+def analyze_amc_clean_room(
+    journey_paths: Optional[list[dict[str, Any]]] = None,
+    lookback_days: int = 28,
+) -> dict[str, Any]
+```
+**Returns**:
+- Privacy-safe AMC SQL queries enforcing `HAVING COUNT(DISTINCT user_id) >= 100` (`__amc_long_tail_cohort__` rollup) and First-Order Markov Chain Removal Effects vs. Last-Touch attribution variance.
+
+### Tool: `activate_amz_flywheel_pro`
+```python
+def activate_amz_flywheel_pro(license_key: str) -> dict[str, Any]
+```
+
+### MCP Resources & Prompts
+- Resource `flywheel://reference/quadrants`: Returns the 4-quadrant classification rules and bid direction playbook.
+- Resource `flywheel://reference/category-priors`: Returns compiled C-level category priors `(mu_cat, sigma2_cat, default_lambda, baseline_cvr)`.
+- Prompt `executive_flywheel_audit`: Multi-step audit prompt template for Claude Desktop / Cursor.
+
+---
+
+## 3. Data Contracts & Mathematical Invariants
+
+1. **Funnel Isolation (`amz_flywheel.core.decomposition`)**:
+   - `organic_clicks = max(0, sqp_clicks - ad_clicks)`
+   - `organic_orders = max(0, sqp_purchases - ad_orders)`
+   - `attribution_window_gap = (ad_orders > sqp_purchases)` (True when 7-day Ads attribution exceeds same-week SQP SERP purchases).
+2. **Pro Velocity-to-Rank Elasticity (`amz_flywheel_pro.flywheel_model`)**:
+   - Velocity state: $V_{k,t} = \lambda_k V_{k,t-1} + O^{\text{ads}}_{k,t} + O^{\text{org}}_{k,t}$ with $\lambda_k \in [0.25, 0.85]$.
+   - Transfer function: $\ln(R_{k,t}) = \alpha_k - \theta_k \ln(1 + V_{k,t}) + \gamma_k \ln(1 + \text{SearchVolume}_{k,t})$.
+   - Empirical Bayes shrinkage (`amz_flywheel_pro.category_priors.shrink_elasticity`) shrinks noisy short-panel estimates ($4 \le T < 12$) toward $(\mu_{\text{cat}}, \sigma^2_{\text{cat}})$.
+3. **Halo-Adjusted Break-Even ACoS & Marginal Response Curves (`amz_flywheel_pro.bid_optimizer`)**:
+   - $\text{ACoS}^*_{\text{halo}, k} = \text{ProductMargin} \times \left(1 + \text{OrganicMultiplier}_{k, 21\text{d}}\right)$.
+   - Marginal Total ROAS: $\text{mROAS}_{\text{total}, k}(S_k) = \frac{\partial \text{PaidSales}_{\text{inc}, k}(S_k)}{\partial S_k} + \frac{\partial \text{OrganicSales}_k(R_k(S_k))}{\partial S_k}$ with SERP #1 ceiling $\min(305, \max(1.0, R_k(S_k)))$ and Rank #1 cannibalization discounting.
+   - Equimarginal Optimality Condition: $\text{ProductMargin} \times \text{mROAS}_{\text{total}, k}(S^*_k) = 1.0$.
+
