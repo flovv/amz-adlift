@@ -50,16 +50,28 @@ amz-flywheel audit \
   --margin 0.38 \
   --out ./reports/flywheel_audit.json
 
-# 2. Validate Polar.sh license key and activate Pro Cython wheel
+# 2. Validate Polar.sh license key and activate Pro Cython wheel (auto-matches OS/Python wheel)
 amz-flywheel auth install-pro --key "AMZ_FW_PRO_..."
 
-# 3. Reallocate portfolio budget using Hill-Saturated Marginal Response Curves
+# 3. Reallocate portfolio budget via True KKT Water-Filling Equimarginal Solver
 amz-flywheel allocate --budget 1100
 
-# 4. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
+# 4. Generate an interactive White-Label HTML/PDF Executive Audit Report
+amz-flywheel report \
+  --out ./reports/client_flywheel_audit.html \
+  --agency-name "Your Agency Name" \
+  --client-name "Client Brand"
+
+# 5. Export upload-ready Amazon Ads Bulk Operations .xlsx (merging exact Amazon IDs & guardrails)
+amz-flywheel bulksheet \
+  --existing-bulk ./exports/Amazon_Ads_Bulk_Operations.xlsx \
+  --out ./reports/upload_ready_bulk_update.xlsx \
+  --max-change 0.25 --min-bid 0.20 --max-bid 8.00
+
+# 6. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
 amz-flywheel amc sql --days 28
 
-# 5. Start the FastMCP stdio server for Claude Desktop / Cursor
+# 7. Start the FastMCP stdio server for Claude Desktop / Cursor
 amz-flywheel mcp
 ```
 
@@ -99,12 +111,13 @@ amz-flywheel mcp
 
 | Type | Name / URI | Tier | Description |
 | :--- | :--- | :--- | :--- |
-| **Tool** | `audit_amazon_flywheel` | Open Core + Pro | Joins local SQP, Ads, and Rank CSVs; isolates pure organic clicks/orders; classifies 4 quadrants; attaches Pro elasticity & Halo ACoS if licensed. |
-| **Tool** | `optimize_budget_allocation` | Pro | Uses Hill-Saturated Marginal Response Curves (`mROAS`) and the Equimarginal Principle to reallocate weekly PPC budget from saturated #1 rank terms into high-leverage flywheel terms. |
-| **Tool** | `simulate_keyword_bid_cut` | Pro | Simulates 21-day organic rank trajectory ($\hat{R}_{t+1\dots t+3}$) and net organic profit impact under `-25%`, `-50%`, and `-100%` PPC spend cuts. |
-| **Tool** | `export_ads_bulksheet` | Pro | Generates an Amazon Ads Sponsored Products Bulk Operations `.xlsx` file (`Operation = Update`) with Halo-Adjusted Break-Even bids. |
+| **Tool** | `audit_amazon_flywheel` | Open Core + Pro | Joins local SQP, Ads (CSV/XLSX), and Rank CSVs; isolates pure organic clicks/orders; classifies 4 quadrants; attaches Pro elasticity (`90% CI`, `R²`), Walk-Forward Backtest MAPE & Halo ACoS if licensed. |
+| **Tool** | `optimize_budget_allocation` | Pro | Empirical Hill-Saturated Marginal Response Curves + True KKT Water-Filling Equimarginal Solver reallocating weekly PPC spend to equalize `mROAS = μ*`. |
+| **Tool** | `generate_audit_report` | Open Core + Pro | Renders a self-contained, print-to-PDF-ready **White-Label Executive HTML Audit Deck** with 4-Quadrant scatter plot, Marginal Response Curve Explorer & KKT reallocation table. |
+| **Tool** | `simulate_keyword_bid_cut` | Pro | Simulates 21-day organic rank trajectory ($\hat{R}_{t+1\dots t+3}$) and SERP-incrementality-adjusted net profit impact under `-25%`, `-50%`, and `-100%` PPC spend cuts. |
+| **Tool** | `export_ads_bulksheet` | Pro | Merges exact numeric `Campaign ID`, `Ad Group ID`, `Keyword ID` & live bids from Seller Central Bulk `.xlsx` exports and writes an upload-ready `Operation = Update` sheet with `min_bid`/`max_bid` guardrails and `bid_diffs`. |
 | **Tool** | `analyze_amc_clean_room` | Open Core | Generates privacy-safe AMC SQL queries (`COUNT(DISTINCT user_id) >= 100`) and computes First-Order Markov Chain Removal Effects vs. Last-Touch variance. |
-| **Tool** | `activate_amz_flywheel_pro` | Pro | Validates a Polar.sh key and writes a 24-hour HMAC-SHA256 signed token to `~/.amz_flywheel/license.cache`. |
+| **Tool** | `activate_amz_flywheel_pro` | Pro | Validates a Polar.sh key (fail-closed in production), auto-downloads matching platform `.whl` with SHA-256 check, and writes a 24-hour HMAC-SHA256 cache. |
 | **Resource** | `flywheel://reference/quadrants` | Open Core | Machine-readable JSON of the 4 diagnostic quadrants, exact mathematical thresholds, and bid action playbooks. |
 | **Resource** | `flywheel://reference/category-priors` | Open Core + Pro | Available category elasticity priors (`general`, `supplements`, `electronics`, `home_kitchen`, `beauty`, `pet_supplies`, `apparel`). |
 | **Prompt** | `executive_flywheel_audit` | Open Core + Pro | Structured multi-step prompt guiding an LLM agent through a CFO/CMO Paid-to-Organic audit. |

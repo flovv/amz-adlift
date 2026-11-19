@@ -59,9 +59,14 @@ def simulate_keyword_bid_cut(
 ```python
 def export_ads_bulksheet(
     output_path: str,
+    existing_bulksheet_path: Optional[str] = None,
     max_bid_change_pct: float = 0.25,
+    min_bid: float = 0.15,
+    max_bid: float = 15.0,
 ) -> dict[str, Any]
 ```
+**Returns**:
+- `output_path`, `rows_written`, `verified_amazon_id_rows`, `upload_ready` (`bool`), and `bid_diffs` (`list[dict]`).
 
 ### Tool: `optimize_budget_allocation`
 ```python
@@ -70,10 +75,24 @@ def optimize_budget_allocation(
 ) -> dict[str, Any]
 ```
 **Returns**:
+- `solver` (`"kkt_water_filling_equimarginal"`), `shadow_price_mroas` ($\mu^*$), `equimarginal_spread`
 - `product_margin` (`float`), `break_even_marginal_roas` (`float`)
 - `total_current_spend` (`float`), `total_allocated_spend` (`float`)
-- `projected_weekly_profit_lift` (`float`)
-- `allocations` (`list[dict]`): Per-keyword `current_weekly_spend`, `allocated_weekly_spend`, `spend_delta`, `average_paid_roas_current`, `marginal_total_roas_current`, `marginal_total_roas_allocated`, and `expected_weekly_profit_change`.
+- `projected_weekly_profit_lift` (`float`), `projected_annual_profit_lift` (`float`)
+- `allocations` (`list[dict]`): Per-keyword `current_weekly_spend`, `allocated_weekly_spend`, `spend_delta`, `average_paid_roas_current`, `marginal_total_roas_current`, `marginal_total_roas_allocated`, `hill_fit_source`, and `expected_weekly_profit_change`.
+
+### Tool: `generate_audit_report`
+```python
+def generate_audit_report(
+    output_path: str,
+    total_weekly_budget: Optional[float] = None,
+    agency_name: str = "amz-flywheel Econometrics",
+    client_name: Optional[str] = None,
+    logo_url: Optional[str] = None,
+) -> dict[str, Any]
+```
+**Returns**:
+- Self-contained, print-to-PDF-ready interactive HTML report with 4-Quadrant scatter plot, Marginal Response Curve Explorer, KKT reallocation table, 90% CIs, and Walk-Forward Backtest MAPE.
 
 ### Tool: `analyze_amc_clean_room`
 ```python

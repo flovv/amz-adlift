@@ -126,13 +126,27 @@ def parse_ads_csv(
     """
     path = Path(csv_path)
     if not path.exists():
-        raise FileNotFoundError(f"Ads Search Term CSV file not found: {path}")
+        raise FileNotFoundError(f"Ads Search Term report file not found: {path}")
 
-    with path.open("r", encoding="utf-8-sig", newline="") as fh:
-        rows = [row for row in csv.reader(fh) if any(cell.strip() for cell in row)]
+    if path.suffix.lower() in (".xlsx", ".xlsm"):
+        import openpyxl
+
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        try:
+            ws = wb.active
+            rows = [
+                ["" if cell is None else str(cell) for cell in r]
+                for r in ws.iter_rows(values_only=True)
+                if any(cell is not None and str(cell).strip() for cell in r)
+            ]
+        finally:
+            wb.close()
+    else:
+        with path.open("r", encoding="utf-8-sig", newline="") as fh:
+            rows = [row for row in csv.reader(fh) if any(cell.strip() for cell in row)]
 
     if not rows:
-        raise SchemaMismatchError(f"Ads Search Term CSV file is empty: {path}")
+        raise SchemaMismatchError(f"Ads Search Term report file is empty: {path}")
 
     col_idx = _resolve_ads_headers(rows[0])
     data_rows = rows[1:]

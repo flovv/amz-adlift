@@ -23,13 +23,21 @@ def is_pro_available() -> bool:
 
 
 def require_pro() -> ModuleType:
-    """Import and return `amz_flywheel_pro`, or raise `ProLicenseError`."""
+    """
+    Import and return `amz_flywheel_pro` after verifying an active license,
+    or raise `ProLicenseError`.
+    """
     mod = get_pro_module()
     if mod is None:
         raise ProLicenseError(
             "This feature requires `amz_flywheel_pro`. Activate a Polar.sh license key via "
             "`amz-flywheel auth install-pro --key <KEY>` or the `activate_amz_flywheel_pro` MCP tool."
         )
+    if hasattr(mod, "assert_licensed"):
+        try:
+            mod.assert_licensed()
+        except PermissionError as exc:
+            raise ProLicenseError(str(exc)) from exc
     return mod
 
 
@@ -39,13 +47,22 @@ def enrich_with_pro_elasticity(
     product_margin: float = 0.35,
 ) -> dict[tuple[str, str], dict[str, Any]]:
     """
-    If `amz_flywheel_pro` is installed, run the Asymmetric Velocity-to-Rank Elasticity
-    solver, Halo-Adjusted Break-Even ACoS calculator, and Hill-Saturated Marginal
-    Response Curve solver on each keyword panel.
+    If `amz_flywheel_pro` is installed and licensed, run:
+      - Asymmetric Velocity-to-Rank Elasticity solver (with 90% CI & R^2)
+      - Walk-Forward Out-of-Sample Backtest (MAE, MAPE, 90% PI coverage)
+      - Halo-Adjusted Break-Even ACoS calculator
+      - Empirical Hill-Saturated Marginal Response Curve solver
+    Gracefully returns `{}` if Pro is absent or unlicensed so Open-Core audits never fail.
     """
     mod = get_pro_module()
     if mod is None:
         return {}
+
+    if hasattr(mod, "assert_licensed"):
+        try:
+            mod.assert_licensed()
+        except PermissionError:
+            return {}
 
     from collections import defaultdict
 
@@ -91,6 +108,24 @@ def enrich_with_pro_elasticity(
             recent_organic_orders=recent_org_orders,
             recent_organic_rank=recent_rank,
         )
+
+        backtest: dict[str, Any] = {}
+        if hasattr(mod, "backtest_keyword_elasticity"):
+            bt = mod.backtest_keyword_elasticity(
+                ad_orders=ad_orders,
+                organic_orders=org_orders,
+                organic_ranks=ranks,
+                search_volumes=volumes,
+                holdout_weeks=2,
+                category=category,
+            )
+            backtest = {
+                "backtest_status": bt["status"],
+                "backtest_rank_mae": bt["rank_mae"],
+                "backtest_rank_mape": bt["rank_mape"],
+                "backtest_within_90_ci_rate": bt["within_90_ci_rate"],
+            }
+
         marginal: dict[str, Any] = {}
         if hasattr(mod, "compute_marginal_response_curve"):
             mc = mod.compute_marginal_response_curve(
@@ -102,6 +137,8 @@ def enrich_with_pro_elasticity(
                 current_ad_orders=recent_ad_orders,
                 current_organic_orders=recent_org_orders,
                 current_organic_rank=recent_rank,
+                spend_series=spends,
+                order_series=ad_orders,
             )
             marginal = {
                 "average_paid_roas": mc["average_paid_roas"],
@@ -111,6 +148,8 @@ def enrich_with_pro_elasticity(
                 "marginal_net_profit_per_dollar": mc["marginal_net_profit_per_dollar"],
                 "optimal_weekly_spend": mc["optimal_weekly_spend"],
                 "recommended_spend_delta": mc["recommended_spend_delta"],
+                "hill_fit_source": mc.get("hill_fit_source", "bayesian_prior"),
+                "response_curve": mc.get("response_curve", []),
             }
-        results[key] = {**fit, **halo, **marginal}
+        results[key] = {**fit, **halo, **backtest, **marginal}
     return results

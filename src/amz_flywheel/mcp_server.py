@@ -22,6 +22,10 @@ from amz_flywheel.io.amc_connector import (
     generate_amc_dsp_search_synergy_sql,
     generate_amc_flywheel_sql,
 )
+from amz_flywheel.io.bulksheet_parser import (
+    merge_bulksheet_ids,
+    parse_ads_bulksheet,
+)
 from amz_flywheel.io.sqp_parser import normalize_query
 from amz_flywheel.pro.bridge import (
     enrich_with_pro_elasticity,
@@ -29,6 +33,7 @@ from amz_flywheel.pro.bridge import (
     require_pro,
 )
 from amz_flywheel.pro.installer import install_pro
+from amz_flywheel.reporting.html_report import generate_html_audit_report
 
 CategoryName = Literal[
     "general",
@@ -454,6 +459,13 @@ def export_ads_bulksheet(
             description="Destination path for the generated Amazon Ads Bulk Operations .xlsx file (e.g. './reports/amazon_ads_bulk_update.xlsx')."
         ),
     ],
+    existing_bulksheet_path: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="Optional path to an exported Seller Central Amazon Ads Bulk Operations .xlsx file. When provided, merges exact numeric Campaign ID, Ad Group ID, Keyword ID, and live Bids so the output is 100% upload-ready.",
+        ),
+    ] = None,
     max_bid_change_pct: Annotated[
         float,
         Field(
@@ -461,10 +473,27 @@ def export_ads_bulksheet(
             description="Maximum allowed single-step bid increase/decrease fraction (e.g. 0.25 caps bid changes at +/-25%). Values > 1 (e.g. 25) are auto-normalized to 0.25.",
         ),
     ] = 0.25,
+    min_bid: Annotated[
+        float,
+        Field(
+            default=0.15,
+            ge=0.02,
+            description="Safety floor for generated CPC bids in currency units (default 0.15).",
+        ),
+    ] = 0.15,
+    max_bid: Annotated[
+        float,
+        Field(
+            default=15.0,
+            ge=0.10,
+            description="Safety ceiling for generated CPC bids in currency units (default 15.00).",
+        ),
+    ] = 15.0,
 ) -> dict[str, Any]:
     """
     [Pro] Generates a ready-to-upload Amazon Ads Sponsored Products Bulk Operations
-    spreadsheet with Halo-Adjusted Break-Even bids.
+    spreadsheet with Halo-Adjusted Break-Even bids, real Amazon IDs (when merged from
+    `existing_bulksheet_path`), and strict min/max bid safety guardrails.
     """
     pro_mod = require_pro()
     norm_max_change = abs(_normalize_fraction(max_bid_change_pct, 0.25))
@@ -505,10 +534,16 @@ def export_ads_bulksheet(
             }
         )
 
+    if existing_bulksheet_path:
+        bulk_targets = parse_ads_bulksheet(existing_bulksheet_path)
+        rows_payload = merge_bulksheet_ids(rows_payload, bulk_targets)
+
     result = pro_mod.generate_ads_bulksheet(
         output_path=str(Path(output_path)),
         keyword_rows=rows_payload,
         max_bid_change_pct=norm_max_change,
+        min_bid=float(min_bid),
+        max_bid=float(max_bid),
     )
     return dict(result)
 
@@ -582,8 +617,8 @@ def optimize_budget_allocation(
     ] = None,
 ) -> dict[str, Any]:
     """
-    [Pro] Uses Hill-Saturated Marginal Response Curves (mROAS = d(PaidSales + OrganicHaloSales)/dSpend)
-    and the Equimarginal Principle to reallocate weekly PPC budget from saturated #1
+    [Pro] Uses Empirical Hill-Saturated Marginal Response Curves and a True KKT
+    Water-Filling Equimarginal Solver to reallocate weekly PPC budget from saturated #1
     keywords (`CANNIBALIZED_RENT`) into high-marginal-return `FLYWHEEL_LEVERAGE` keywords.
     """
     pro_mod = require_pro()
@@ -596,10 +631,11 @@ def optimize_budget_allocation(
     keyword_specs: list[dict[str, Any]] = []
     for diag in diagnostics:
         key = (diag.asin, diag.search_query)
-        kw_rows = [
-            r for r in panel if r.asin == diag.asin and r.search_query == diag.search_query
-        ]
-        trailing = sorted(kw_rows, key=lambda x: x.week_start)[-4:] if kw_rows else []
+        kw_rows = sorted(
+            [r for r in panel if r.asin == diag.asin and r.search_query == diag.search_query],
+            key=lambda x: x.week_start,
+        )
+        trailing = kw_rows[-4:] if kw_rows else []
         if not trailing:
             continue
         pm = pro_metrics.get(key) or (diag.pro_metrics or {})
@@ -617,6 +653,8 @@ def optimize_budget_allocation(
                 "current_organic_rank": float(
                     trailing[-1].organic_rank if trailing[-1].organic_rank is not None else 10.0
                 ),
+                "spend_series": [float(r.ad_spend) for r in kw_rows],
+                "order_series": [float(r.ad_orders) for r in kw_rows],
             }
         )
 
@@ -630,6 +668,97 @@ def optimize_budget_allocation(
     )
 
 
+@mcp.tool()
+def generate_audit_report(
+    output_path: Annotated[
+        str,
+        Field(
+            description="Destination path for the interactive white-label HTML/PDF executive audit report (e.g. './reports/flywheel_audit.html')."
+        ),
+    ],
+    total_weekly_budget: Annotated[
+        Optional[float],
+        Field(
+            default=None,
+            description="Optional target weekly PPC budget for KKT Equimarginal reallocation charts.",
+        ),
+    ] = None,
+    agency_name: Annotated[
+        str,
+        Field(
+            default="amz-flywheel Econometrics",
+            description="White-label agency or firm name displayed in the report header.",
+        ),
+    ] = "amz-flywheel Econometrics",
+    client_name: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="Optional client brand name displayed in the report header.",
+        ),
+    ] = None,
+    logo_url: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="Optional HTTPS or data-URI logo image URL for white-label agency branding.",
+        ),
+    ] = None,
+) -> dict[str, Any]:
+    """
+    Generates an interactive, print-to-PDF-ready White-Label Executive HTML Audit Report
+    with 4-Quadrant Bubble Charts, Marginal Response Curve Explorer, KKT Equimarginal
+    Reallocation Table, 90% Elasticity CIs, and Walk-Forward Backtest MAPE.
+    """
+    _ensure_audit_state_loaded()
+    panel: list[UnifiedKeywordWeek] = _LAST_AUDIT_STATE.get("panel", [])
+    diagnostics: list[KeywordQuadrantDiagnostic] = _LAST_AUDIT_STATE.get("diagnostics", [])
+    pro_metrics = _LAST_AUDIT_STATE.get("pro_metrics", {})
+    category = str(_LAST_AUDIT_STATE.get("category", "general"))
+    product_margin = float(_LAST_AUDIT_STATE.get("product_margin", 0.35))
+
+    primary_asin = panel[0].asin if panel else (diagnostics[0].asin if diagnostics else "UNKNOWN_ASIN")
+    quad_counts = dict(Counter(d.quadrant for d in diagnostics))
+    red_team_warnings: list[str] = []
+    kw_dicts: list[dict[str, Any]] = []
+    for d in diagnostics:
+        d_copy = d.model_dump(mode="json")
+        if not d_copy.get("pro_metrics"):
+            pm = pro_metrics.get((d.asin, d.search_query))
+            if pm:
+                d_copy["pro_metrics"] = pm
+        kw_dicts.append(d_copy)
+        for flag in d.red_team_flags:
+            red_team_warnings.append(f"[{d.search_query}] {flag}")
+
+    audit_dict = {
+        "asin": primary_asin,
+        "category": category,
+        "product_margin": product_margin,
+        "pro_enabled": bool(pro_metrics),
+        "total_keywords": len(diagnostics),
+        "quadrant_counts": quad_counts,
+        "red_team_warnings": red_team_warnings,
+        "keywords": kw_dicts,
+    }
+
+    alloc_report: Optional[dict[str, Any]] = None
+    try:
+        if diagnostics:
+            alloc_report = optimize_budget_allocation(total_weekly_budget=total_weekly_budget)
+    except Exception:
+        alloc_report = None
+
+    return generate_html_audit_report(
+        audit_report=audit_dict,
+        output_path=output_path,
+        allocation_report=alloc_report,
+        agency_name=agency_name,
+        client_name=client_name,
+        logo_url=logo_url,
+    )
+
+
 def main() -> None:
     """Entry point for `amz-flywheel-mcp` stdio server."""
     mcp.run()
@@ -637,5 +766,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
