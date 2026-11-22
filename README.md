@@ -1,85 +1,81 @@
 # amz-adlift
 
-**Zero-OAuth, local-first Python econometric package & Model Context Protocol (MCP) server quantifying the causal Amazon Paid-to-Organic Search Flywheel.**
+Local-first Python package, CLI, and MCP server that separates **true incremental Amazon PPC lift** from **organic cannibalization** using your exported Seller Central reports.
 
-`amz-adlift` isolates pure organic search conversions from combined Amazon Brand Analytics Search Query Performance (SQP) reports, classifies every `(asin, search_query)` panel into four deterministic diagnostic quadrants, and—when paired with the compiled Cython Pro engine (`amz_adlift_pro`)—estimates asymmetric velocity-to-rank elasticities ($\theta^{\text{EB}}_k, \lambda_k$), simulates 21-day counterfactual bid cuts, and exports ready-to-upload Amazon Ads Bulk Operations `.xlsx` spreadsheets.
+## What You Get
 
----
-
-## Architecture & Open-Core Topology
-
-```text
-┌────────────────────────────────────────────────────────────────────────────┐
-│ REPO 1: PUBLIC (`amz-adlift`)                                            │
-│ • Pure readable Python (>=3.10) (`pip install amz-adlift`)               │
-│ • Multi-format local CSV ingestor (Brand Analytics SQP + Ads + Rank logs)  │
-│ • Organic vs. Paid funnel isolation & 4-Quadrant diagnostic classifier     │
-│ • FastMCP server (`amz-adlift-mcp`) with Tools, Resources & Prompts      │
-│ • Pro binary bridge & Polar.sh wheel installer (`install_pro(api_key)`)    │
-└─────────────────────────────────────┬──────────────────────────────────────┘
-                                      │ Dynamic Runtime Bridge
-                                      ▼
-┌────────────────────────────────────────────────────────────────────────────┐
-│ REPO 2: PRIVATE (`amz-adlift-pro-private` -> `amz_adlift_pro`)         │
-│ • Compiled Cython C-extensions (`.so` / `.pyd`) with stripped source       │
-│ • Asymmetric Adstock-to-Rank elasticity & 21-day bid-cut simulator         │
-│ • Embedded C-level category elasticity priors (`category_priors.pyx`)      │
-│ • Halo-Adjusted Break-Even ACoS & Amazon Ads Bulk Sheet generator          │
-└────────────────────────────────────────────────────────────────────────────┘
-```
+- **Stop paying ad rent on #1 organic keywords** — Isolates pure organic clicks and orders from combined Search Query Performance (SQP) data so you immediately see where Exact PPC is just cannibalizing clicks you already own.
+- **Find keywords where PPC actually drives organic rank** — Classifies every `(asin, search_query)` pair into four clear buckets (`CANNIBALIZED_RENT`, `FLYWHEEL_LEVERAGE`, `TREADMILL_DEAD_WEIGHT`, `AT_RISK_DECAY`) instead of judging keywords on misleading Average ACoS alone.
+- **Zero OAuth, 100% local privacy** — Drop in exported CSV/XLSX files from Seller Central, Amazon Ads, and your rank tracker. Your account data never leaves your machine and no SP-API / Ads API credentials are required.
+- **Works with messy real-world Seller Central exports** — Auto-detects ASIN View and Brand View SQP banners, Legacy Sponsored Products reports, 2026 Unified Reporting, native `.xlsx` Search Term exports, and US/UK (`$`, `£`) or EU/DE (`€`, comma decimals) number formats.
+- **Client-ready executive reports in one command** — Generates self-contained, print-to-PDF white-label HTML audit decks with interactive 4-quadrant charts for agencies and brand operators.
+- **Built for AI agents out of the box** — Ships with a local FastMCP `stdio` server for Claude Desktop and Cursor, plus an installable [`skills.sh`](https://skills.sh) agent skill.
+- **Optional Pro econometrics & bulk execution** — Pair with `amz_adlift_pro` to estimate keyword rank elasticities, simulate 21-day bid cuts, reallocate weekly PPC budgets via a KKT equimarginal solver, and export upload-ready Amazon Ads Bulk Operations `.xlsx` files with exact Amazon IDs and bid guardrails.
 
 ---
 
-## Quickstart
-
-### 1. Installation
+## Install
 
 ```bash
 pip install amz-adlift
 ```
 
-### 2. CLI Usage (`amz-adlift`)
+### Install as an Agent Skill (`skills.sh`)
 
 ```bash
-# 1. Run a local Paid-to-Organic Flywheel audit from exported CSVs
+npx skills add flovv/amz-adlift
+```
+
+Skill definition: [skills/amz-adlift/SKILL.md](skills/amz-adlift/SKILL.md)
+
+---
+
+## Quickstart (CLI)
+
+```bash
+# 1. Run a local Paid vs. Organic audit from exported CSV/XLSX files
 amz-adlift audit \
   --sqp ./exports/US_Search_Query_Performance_ASIN.csv \
   --ads ./exports/Sponsored_Products_Search_Term_Report.csv \
   --rank ./exports/Helium10_Keyword_Tracker.csv \
   --category supplements \
   --margin 0.38 \
-  --out ./reports/flywheel_audit.json
+  --out ./reports/adlift_audit.json
 
-# 2. Validate Polar.sh license key and activate Pro Cython wheel (auto-matches OS/Python wheel)
-amz-adlift auth install-pro --key "AMZ_AL_PRO_..."
-
-# 3. Reallocate portfolio budget via True KKT Water-Filling Equimarginal Solver
-amz-adlift allocate --budget 1100
-
-# 4. Generate an interactive White-Label HTML/PDF Executive Audit Report
+# 2. Generate a white-label HTML/PDF executive audit report
 amz-adlift report \
-  --out ./reports/client_flywheel_audit.html \
+  --out ./reports/client_adlift_audit.html \
   --agency-name "Your Agency Name" \
   --client-name "Client Brand"
 
-# 5. Export upload-ready Amazon Ads Bulk Operations .xlsx (merging exact Amazon IDs & guardrails)
+# 3. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
+amz-adlift amc sql --days 28
+
+# 4. Start the local FastMCP stdio server (Claude Desktop / Cursor)
+amz-adlift mcp
+```
+
+### Pro Engine Commands (Optional)
+
+```bash
+# Activate a Polar.sh Pro license and install the matching platform wheel
+amz-adlift auth install-pro --key "AMZ_AL_PRO_..."
+
+# Reallocate weekly portfolio budget via KKT water-filling solver
+amz-adlift allocate --budget 1100
+
+# Export an upload-ready Amazon Ads Bulk Operations .xlsx with ID merge & guardrails
 amz-adlift bulksheet \
   --existing-bulk ./exports/Amazon_Ads_Bulk_Operations.xlsx \
   --out ./reports/upload_ready_bulk_update.xlsx \
   --max-change 0.25 --min-bid 0.20 --max-bid 8.00
-
-# 6. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
-amz-adlift amc sql --days 28
-
-# 7. Start the FastMCP stdio server for Claude Desktop / Cursor
-amz-adlift mcp
 ```
 
 ---
 
-## Agentic Setup: Claude Desktop & Cursor (FastMCP)
+## MCP Setup (Claude Desktop & Cursor)
 
-`amz-adlift-mcp` runs 100% locally over `stdio`. Proprietary Seller Central Brand Analytics and Sponsored Products CSVs never leave the analyst's machine.
+`amz-adlift-mcp` runs locally over `stdio`. Exported Seller Central files stay on your machine.
 
 ### Claude Desktop (`claude_desktop_config.json`)
 
@@ -107,36 +103,36 @@ amz-adlift mcp
 }
 ```
 
-### Exposed MCP Capabilities
+### Available MCP Tools, Resources & Prompts
 
 | Type | Name / URI | Tier | Description |
 | :--- | :--- | :--- | :--- |
-| **Tool** | `audit_amazon_flywheel` | Open Core + Pro | Joins local SQP, Ads (CSV/XLSX), and Rank CSVs; isolates pure organic clicks/orders; classifies 4 quadrants; attaches Pro elasticity (`90% CI`, `R²`), Walk-Forward Backtest MAPE & Halo ACoS if licensed. |
-| **Tool** | `optimize_budget_allocation` | Pro | Empirical Hill-Saturated Marginal Response Curves + True KKT Water-Filling Equimarginal Solver reallocating weekly PPC spend to equalize `mROAS = μ*`. |
-| **Tool** | `generate_audit_report` | Open Core + Pro | Renders a self-contained, print-to-PDF-ready **White-Label Executive HTML Audit Deck** with 4-Quadrant scatter plot, Marginal Response Curve Explorer & KKT reallocation table. |
-| **Tool** | `simulate_keyword_bid_cut` | Pro | Simulates 21-day organic rank trajectory ($\hat{R}_{t+1\dots t+3}$) and SERP-incrementality-adjusted net profit impact under `-25%`, `-50%`, and `-100%` PPC spend cuts. |
-| **Tool** | `export_ads_bulksheet` | Pro | Merges exact numeric `Campaign ID`, `Ad Group ID`, `Keyword ID` & live bids from Seller Central Bulk `.xlsx` exports and writes an upload-ready `Operation = Update` sheet with `min_bid`/`max_bid` guardrails and `bid_diffs`. |
-| **Tool** | `analyze_amc_clean_room` | Open Core | Generates privacy-safe AMC SQL queries (`COUNT(DISTINCT user_id) >= 100`) and computes First-Order Markov Chain Removal Effects vs. Last-Touch variance. |
-| **Tool** | `activate_amz_adlift_pro` | Pro | Validates a Polar.sh key (fail-closed in production), auto-downloads matching platform `.whl` with SHA-256 check, and writes a 24-hour HMAC-SHA256 cache. |
-| **Resource** | `flywheel://reference/quadrants` | Open Core | Machine-readable JSON of the 4 diagnostic quadrants, exact mathematical thresholds, and bid action playbooks. |
-| **Resource** | `flywheel://reference/category-priors` | Open Core + Pro | Available category elasticity priors (`general`, `supplements`, `electronics`, `home_kitchen`, `beauty`, `pet_supplies`, `apparel`). |
-| **Prompt** | `executive_flywheel_audit` | Open Core + Pro | Structured multi-step prompt guiding an LLM agent through a CFO/CMO Paid-to-Organic audit. |
+| **Tool** | `audit_amazon_flywheel` | Open Core + Pro | Joins local SQP, Ads (CSV/XLSX), and Rank CSVs; isolates pure organic clicks/orders; classifies 4 quadrants; attaches Pro elasticity (`90% CI`, `R²`), Walk-Forward Backtest MAPE & Halo ACoS when licensed. |
+| **Tool** | `generate_audit_report` | Open Core + Pro | Renders a self-contained, print-to-PDF white-label HTML audit deck with 4-quadrant scatter plot, marginal response curves, and reallocation table. |
+| **Tool** | `analyze_amc_clean_room` | Open Core | Generates privacy-safe AMC SQL (`HAVING COUNT(DISTINCT user_id) >= 100`) and computes First-Order Markov Chain Removal Effects vs. Last-Touch variance. |
+| **Tool** | `optimize_budget_allocation` | Pro | Fits Hill-saturated marginal response curves and runs a KKT water-filling solver to equalize marginal total ROAS across keywords. |
+| **Tool** | `simulate_keyword_bid_cut` | Pro | Projects 21-day organic rank trajectory and SERP-incrementality-adjusted net profit impact under `-25%`, `-50%`, and `-100%` spend cuts. |
+| **Tool** | `export_ads_bulksheet` | Pro | Merges exact `Campaign ID`, `Ad Group ID`, `Keyword ID`, and live bids from Seller Central Bulk `.xlsx` exports and writes an upload-ready `Operation = Update` sheet with bid guardrails. |
+| **Tool** | `activate_amz_adlift_pro` | Pro | Validates a Polar.sh key (fail-closed in production), downloads the matching platform `.whl` with SHA-256 verification, and caches the license locally for 24h. |
+| **Resource** | `flywheel://reference/quadrants` | Open Core | Machine-readable JSON of the 4 quadrants, thresholds, and bid playbooks. |
+| **Resource** | `flywheel://reference/category-priors` | Open Core + Pro | Category elasticity priors (`general`, `supplements`, `electronics`, `home_kitchen`, `beauty`, `pet_supplies`, `apparel`). |
+| **Prompt** | `executive_flywheel_audit` | Open Core + Pro | Structured multi-step prompt for running a paid-vs-organic audit with an LLM. |
 
 ---
 
-## Python SDK Usage
+## Python SDK
 
 ```python
 from amz_adlift import ingest_and_align, classify_panel, enrich_with_pro_elasticity
 
-# 1. Ingest and align multi-format Seller Central SQP, Ads, and Rank CSVs
+# 1. Ingest and align Seller Central SQP, Ads, and Rank CSVs
 panel = ingest_and_align(
     sqp_csv_path="tests/fixtures/sqp_multiweek.csv",
     ads_csv_path="tests/fixtures/ads_multiweek.csv",
     rank_csv_path="tests/fixtures/rank_multiweek.csv",
 )
 
-# 2. Run deterministic 4-quadrant diagnostic classification
+# 2. Classify keywords into the 4 diagnostic quadrants
 diagnostics = classify_panel(panel, category="supplements", strict=True)
 for diag in diagnostics:
     print(f"{diag.search_query:30s} -> {diag.quadrant:22s} | {diag.diagnostic_summary}")
@@ -147,74 +143,58 @@ pro_metrics = enrich_with_pro_elasticity(panel, category="supplements", product_
 
 ---
 
-## Supported Multi-Format CSV Schemas (Zero OAuth)
+## Supported Export Formats
 
-All parsers automatically normalize US/UK (`1,234.56`, `$`, `£`) and EU/DE (`1.234,56`, `€`) number formats and align dates to Amazon SQP weekly Sunday–Saturday buckets.
+All parsers normalize US/UK (`1,234.56`, `$`, `£`) and EU/DE (`1.234,56`, `€`) numbers and align dates to Amazon SQP weekly Sunday–Saturday buckets.
 
-### 1. Brand Analytics Search Query Performance (`io/sqp_parser.py`)
-Supports Row 1 metadata banners (`ASIN=["B08XYZ123"],Reporting Range=["Weekly"],Select Week=["2026-10-18 - 2026-10-24"]`) followed by Row 2 headers in both **ASIN View** (`Impressions: ASIN Count`, `Clicks: ASIN Count`, `Purchases: ASIN Count`) and **Brand View** (`Impressions: Brand Count`, `Clicks: Brand Count`, `Purchases: Brand Count`).
-
-### 2. Amazon Ads Search Term Reports (`io/ads_parser.py`)
-
-| Normalized Field | Legacy Sponsored Products Header | 2026 Unified Reporting Header | German (DE) Header |
-| :--- | :--- | :--- | :--- |
-| `date_range` | `Start Date` + `End Date` | `Date range` or `Date` | `Startdatum` + `Enddatum` |
-| `campaign_name` | `Campaign Name` | `Campaign name` | `Kampagnenname` |
-| `ad_group_name` | `Ad Group Name` | `Ad group name` | `Anzeigengruppenname` |
-| `search_query` | `Customer Search Term` | `Search term` | `Suchbegriff` |
-| `match_type` | `Match Type` | `Targeting match type` | `Übereinstimmungstyp` |
-| `ad_impressions` | `Impressions` | `Impressions` | `Impressionen` |
-| `ad_clicks` | `Clicks` | `Clicks` | `Klicks` |
-| `ad_spend` | `Spend` | `Total cost` | `Ausgaben` |
-| `ad_sales` | `7 Day Total Sales` | `Sales` | `7 Tage, Umsatz gesamt` |
-| `ad_orders` | `7 Day Total Orders (#)` | `Purchases` | `7 Tage, Aufträge gesamt (#)` |
-
-### 3. Organic Keyword Rank Tracker (`io/rank_parser.py`)
-Accepts Helium 10 Keyword Tracker, DataDive, Perpetua, or generic CSV exports containing `Keyword` / `Search Term`, `Date` / `Timestamp`, `Organic Rank` (aggregated to weekly median; `>300` or `unranked` capped at `305.0`), and optional `Sponsored Rank`.
+- **Brand Analytics SQP (`io/sqp_parser.py`)** — Handles Row 1 metadata banners (`ASIN=[...], Reporting Range=["Weekly"], Select Week=[...]`) and Row 2 headers for both **ASIN View** and **Brand View**.
+- **Amazon Ads Search Term Reports (`io/ads_parser.py`)** — Supports `.csv` and `.xlsx` across Legacy Sponsored Products (`Customer Search Term`, `Spend`, `7 Day Total Sales`), 2026 Unified Reporting (`Search term`, `Total cost`, `Sales`, `Purchases`), and German/EU exports (`Suchbegriff`, `Ausgaben`, `7 Tage, Umsatz gesamt`).
+- **Organic Keyword Rank Trackers (`io/rank_parser.py`)** — Accepts Helium 10 Keyword Tracker, DataDive, Perpetua, or generic CSVs (`Keyword`, `Date`, `Organic Rank`; `>300` / `unranked` capped at `305.0`).
 
 ---
 
-## Econometric Methodology & 4-Quadrant Definitions
+## How the Math Works
 
-### Funnel Isolation (`core/decomposition.py`)
-Amazon SQP reports combine organic and Sponsored Products SERP interactions within a calendar week, whereas Ads reports use a 7-day post-click attribution window:
-- **Pure Organic Clicks**: $C^{\text{org}}_{k,t} = \max\left(0, C^{\text{SQP}}_{k,t} - C^{\text{ads}}_{k,t}\right)$
-- **Pure Organic Orders**: $O^{\text{org}}_{k,t} = \max\left(0, O^{\text{SQP}}_{k,t} - O^{\text{ads}}_{k,t}\right)$
-- **Attribution Window Gap Flag**: `attribution_window_gap = True` whenever $O^{\text{ads}}_{k,t} > O^{\text{SQP}}_{k,t}$.
-- **True Paid Share of Brand Orders**: $\text{PaidShare}_{k,t} = \frac{O^{\text{ads}}_{k,t}}{\max\left(1, O^{\text{ads}}_{k,t} + O^{\text{org}}_{k,t}\right)}$
+### Pure Organic Funnel Isolation (`core/decomposition.py`)
+
+Amazon SQP combines organic and Sponsored Products interactions in the same calendar week, while Ads reports use a 7-day post-click window:
+
+- **Pure Organic Clicks:** $C^{\text{org}}_{k,t} = \max\left(0, C^{\text{SQP}}_{k,t} - C^{\text{ads}}_{k,t}\right)$
+- **Pure Organic Orders:** $O^{\text{org}}_{k,t} = \max\left(0, O^{\text{SQP}}_{k,t} - O^{\text{ads}}_{k,t}\right)$
+- **Attribution Window Gap Flag:** `attribution_window_gap = True` whenever $O^{\text{ads}}_{k,t} > O^{\text{SQP}}_{k,t}$.
+- **True Paid Share of Brand Orders:** $\text{PaidShare}_{k,t} = \frac{O^{\text{ads}}_{k,t}}{\max\left(1, O^{\text{ads}}_{k,t} + O^{\text{org}}_{k,t}\right)}$
 
 ### 4-Quadrant Diagnostic Classifier (`core/quadrants.py`)
+
 Requires $\ge 4$ aligned weeks per `(asin, search_query)`:
 
-| Quadrant | Classification Criteria | Recommended Bid Action |
+| Quadrant | Criteria | Recommended Bid Action |
 | :--- | :--- | :--- |
-| **`CANNIBALIZED_RENT`** | Trailing 4w median `organic_rank <= 2.5` **AND** pure organic CVR $\ge 12\%$ **AND** weekly `ad_spend >= $50` (or top 25% of account). | Step down Exact CPC bids by 15%–25%; brand is paying rent on clicks it already owns organically at #1–#2. |
-| **`FLYWHEEL_LEVERAGE`** | Trailing 4–8w OLS rank velocity slope $\frac{\Delta R_k}{\Delta t} \le -0.5$ pos/wk (climbing toward #1) **AND** lagged paid-to-organic order correlation $\rho \ge 0.35$. | Bid up to **Halo-Adjusted Break-Even ACoS**: $\text{ACoS}^*_{\text{halo}} = \text{Margin} \times (1 + \text{OrganicMultiplier}_{k,21\text{d}})$. |
-| **`TREADMILL_DEAD_WEIGHT`** | Cumulative 4w `ad_spend >= $100` **AND** rank slope $> -0.2$ (stagnant worse than #10) **AND** SQP CVR $< 50\%$ of category median. | Cut bids by 25%–50% or negate; listing conversion rate must be improved before PPC can lift organic rank. |
-| **`AT_RISK_DECAY`** | Trailing 4w rank velocity slope $\ge +0.75$ pos/wk (slipping down SERP) **AND** SQP Brand Click Share declining week-over-week. | Run `simulate_keyword_bid_cut` and deploy defensive Sponsored Products bids where Halo Multiplier is positive. |
+| **`CANNIBALIZED_RENT`** | Trailing 4w median `organic_rank <= 2.5` **AND** pure organic CVR $\ge 12\%$ **AND** weekly `ad_spend >= $50` (or top 25% of account). | Cut Exact CPC bids by 15%–25%; you are paying ad rent on clicks you already capture organically. |
+| **`FLYWHEEL_LEVERAGE`** | Trailing 4–8w OLS rank slope $\frac{\Delta R_k}{\Delta t} \le -0.5$ pos/wk (climbing toward #1) **AND** lagged paid-to-organic correlation $\rho \ge 0.35$. | Bid up to **Halo-Adjusted Break-Even ACoS**: $\text{ACoS}^*_{\text{halo}} = \text{Margin} \times (1 + \text{OrganicMultiplier}_{k,21\text{d}})$. |
+| **`TREADMILL_DEAD_WEIGHT`** | Cumulative 4w `ad_spend >= $100` **AND** rank slope $> -0.2$ (stagnant worse than #10) **AND** SQP CVR $< 50\%$ of category median. | Cut bids by 25%–50% or negate; fix listing conversion rate before spending for rank. |
+| **`AT_RISK_DECAY`** | Trailing 4w rank slope $\ge +0.75$ pos/wk (slipping) **AND** SQP Brand Click Share declining week-over-week. | Simulate bid cuts and deploy defensive Sponsored Products bids where organic halo is positive. |
 
 ---
 
-## Case Study: Typical PPC Tool vs. `amz-adlift` Optimization
+## Example: Average-ACoS Rules vs. `amz-adlift`
 
-> *Detailed econometric walkthrough, mathematical derivations, and reproduction scripts are documented in [docs/case_study_optimization.md](docs/case_study_optimization.md).*
+> Full walkthrough and reproduction steps in [docs/case_study_optimization.md](docs/case_study_optimization.md).
 
-### Scenario: Herbal Sleep Supplement (`ASIN: B08XYZ123`, 40% Margin, $1,100/wk Budget)
+**Scenario:** Herbal Sleep Supplement (`ASIN: B08XYZ123`, 40% margin, $1,100/wk budget)
 
-| Search Query | Organic Rank | Paid ROAS (ACoS) | **Typical Tool / Agency Action** | **`amz-adlift` Econometric Diagnosis** | **`amz-adlift` Recommendation** |
+| Search Query | Organic Rank | Paid ROAS (ACoS) | Typical PPC Rule | `amz-adlift` Diagnosis | `amz-adlift` Action |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`brand name sleep gummies`** | **#1.0** | **5.0x** (20%) | **Raise Bids (+20%)**<br>*(Star performer; low ACoS)* | **`CANNIBALIZED_RENT`**<br>SERP ceiling reached; marginal total ROAS = **0.35x** (-$0.86 net profit per dollar). | **Cut Spend: $500 $\to$ $286 (-43%)**<br>Saves $213/wk with **zero rank loss** (`[1.0, 1.0, 1.0]`). |
-| **`organic sleep gummies for adults`** | **#7.0** | **2.2x** (45.5%) | **Cut Bids (-15%)**<br>*(ACoS 45.5% > 40% target)* | **`FLYWHEEL_LEVERAGE`**<br>High rank elasticity ($\theta = 0.52$); 21d organic halo adds **1.14x**; marginal total ROAS = **2.44x**. | **Scale Spend: $250 $\to$ $573 (+129%)**<br>Drives rank from #7 $\to$ #3, unlocking organic order halo. |
-| **`melatonin free sleep supplement`** | **#48.0** | **1.4x** (71.4%) | **Hold / Slow Bid Down**<br>*(Keep spending for "rank")* | **`TREADMILL_DEAD_WEIGHT`**<br>Zero rank elasticity ($\theta = 0.05$); CVR defect; marginal total ROAS = **0.68x**. | **Slash Spend: $300 $\to$ $69 (-77%)**<br>Stops capital waste on un-rankable term. |
-| **`tart cherry sleep aid`** | **#4.5** | **2.1x** (47.6%) | **Under-bid / Deprioritize**<br>*(Low volume, marginal ACoS)* | **`AT_RISK_DECAY`**<br>Rank slipping; marginal total ROAS = **3.42x** (+$0.37 net profit per dollar). | **Scale Spend: $50 $\to$ $172 (+244%)**<br>Defends Top-5 organic rank. |
+| **`brand name sleep gummies`** | **#1.0** | **5.0x** (20%) | Raise bids (+20%) | `CANNIBALIZED_RENT` (mTotal ROAS **0.35x**) | Cut spend $500 -> $286 (**-43%**) with zero rank loss |
+| **`organic sleep gummies for adults`** | **#7.0** | **2.2x** (45.5%) | Cut bids (-15%) | `FLYWHEEL_LEVERAGE` (mTotal ROAS **2.44x**) | Scale spend $250 -> $573 (**+129%**), pushing rank #7 -> #3 |
+| **`melatonin free sleep supplement`** | **#48.0** | **1.4x** (71.4%) | Hold for "rank" | `TREADMILL_DEAD_WEIGHT` (mTotal ROAS **0.68x**) | Slash spend $300 -> $69 (**-77%**) |
+| **`tart cherry sleep aid`** | **#4.5** | **2.1x** (47.6%) | Deprioritize | `AT_RISK_DECAY` (mTotal ROAS **3.42x**) | Scale spend $50 -> $172 (**+244%**) to defend Top-5 rank |
 
-### The Portfolio Bottom Line (Equimarginal Reallocation)
+**Result on the same $1,100/wk budget:** **+$145.18/week** (**+$7,549.36/year** on a single ASIN) with **$0 extra ad spend**.
 
-```text
-Total Weekly Spend:      $1,100.00  ──►  $1,100.01  (0.0% spend increase)
-Net Weekly Profit Lift:  Baseline   ──►  +$145.18 / week
-Annualized Profit Lift:  Baseline   ──►  +$7,549.36 / year (single ASIN)
-```
+---
 
-**Why It Works**: Traditional tools operate on **Average ROAS** and cannot distinguish incremental paid orders from cannibalized organic clicks at Rank #1. `amz-adlift` computes **Marginal Total ROAS** across both paid and organic funnels, shifting budget out of saturated negative-marginal terms into positive-marginal flywheel drivers without increasing total spend by a single dollar.
+## Open Core & Pro Extension
 
+- **`amz-adlift` (this repo, MIT):** Pure Python (`>=3.10`) multi-format parsers, funnel isolation, 4-quadrant classifier, white-label HTML/PDF reports, AMC SQL/Markov attribution, CLI, and FastMCP server.
+- **`amz_adlift_pro` (optional licensed extension):** Compiled Cython engine for asymmetric velocity-to-rank elasticity, 21-day bid-cut simulation, KKT equimarginal budget allocation, and Seller Central bulk `.xlsx` bid updates.
