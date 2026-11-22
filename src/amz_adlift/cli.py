@@ -1,4 +1,4 @@
-"""Typer CLI for amz-flywheel (`audit`, `report`, `bulksheet`, `allocate`, `mcp`, `auth`, `amc`)."""
+"""Typer CLI for amz-adlift (`audit`, `report`, `bulksheet`, `allocate`, `mcp`, `auth`, `amc`)."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from typing import Optional
 
 import typer
 
-from amz_flywheel.io.amc_connector import (
+from amz_adlift.io.amc_connector import (
     generate_amc_dsp_search_synergy_sql,
     generate_amc_flywheel_sql,
 )
-from amz_flywheel.mcp_server import (
+from amz_adlift.mcp_server import (
     analyze_amc_clean_room,
     audit_amazon_flywheel,
     export_ads_bulksheet,
@@ -20,10 +20,10 @@ from amz_flywheel.mcp_server import (
     mcp as fastmcp_server,
     optimize_budget_allocation,
 )
-from amz_flywheel.pro.installer import install_pro
+from amz_adlift.pro.installer import install_pro
 
 app = typer.Typer(
-    name="amz-flywheel",
+    name="amz-adlift",
     help="Local-first Amazon Paid-to-Organic Search Flywheel & Rank Elasticity CLI.",
     no_args_is_help=True,
 )
@@ -96,7 +96,7 @@ def report_command(
         None, "--budget", help="Optional target weekly PPC budget for KKT Equimarginal charts."
     ),
     agency_name: str = typer.Option(
-        "amz-flywheel Econometrics", "--agency-name", help="White-label agency name for header."
+        "amz-adlift Econometrics", "--agency-name", help="White-label agency name for header."
     ),
     client_name: Optional[str] = typer.Option(
         None, "--client-name", help="White-label client brand name for header."
@@ -162,9 +162,9 @@ def mcp_command() -> None:
 
 @auth_app.command("install-pro")
 def auth_install_pro_command(
-    key: str = typer.Option(..., "--key", help="Polar.sh Pro license key (e.g. AMZ_FW_PRO_...)."),
+    key: str = typer.Option(..., "--key", help="Polar.sh Pro license key (e.g. AMZ_AL_PRO_...)."),
     wheel_dir: Optional[Path] = typer.Option(
-        None, "--wheel-dir", help="Optional local directory containing built amz_flywheel_pro wheel."
+        None, "--wheel-dir", help="Optional local directory containing built amz_adlift_pro wheel."
     ),
     wheel_url: Optional[str] = typer.Option(
         None, "--wheel-url", help="Optional direct HTTPS URL for the platform .whl binary."

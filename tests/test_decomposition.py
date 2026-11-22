@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from amz_flywheel.contracts.exceptions import InsufficientHistoryError
-from amz_flywheel.core import (
+from amz_adlift.contracts.exceptions import InsufficientHistoryError
+from amz_adlift.core import (
     classify_keyword_series,
     classify_panel,
     decompose_observation,
     decompose_panel,
 )
-from amz_flywheel.io import ingest_and_align
+from amz_adlift.io import ingest_and_align
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

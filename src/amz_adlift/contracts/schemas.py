@@ -1,4 +1,4 @@
-"""Pydantic v2 input/output data models for amz-flywheel."""
+"""Pydantic v2 input/output data models for amz-adlift."""
 
 from datetime import date
 from typing import Any, Literal, Optional

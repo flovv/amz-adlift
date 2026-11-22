@@ -6,21 +6,21 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from amz_flywheel.contracts.schemas import (
+from amz_adlift.contracts.schemas import (
     AdsRecord,
     RankRecord,
     SQPRecord,
     UnifiedKeywordWeek,
 )
-from amz_flywheel.core.decomposition import decompose_observation
-from amz_flywheel.io.ads_parser import parse_ads_csv
-from amz_flywheel.io.amc_connector import (
+from amz_adlift.core.decomposition import decompose_observation
+from amz_adlift.io.ads_parser import parse_ads_csv
+from amz_adlift.io.amc_connector import (
     AMC_LONG_TAIL_BUCKET,
     AMCKewordWeekRecord,
     parse_amc_csv,
 )
-from amz_flywheel.io.rank_parser import parse_rank_csv
-from amz_flywheel.io.sqp_parser import parse_sqp_csv
+from amz_adlift.io.rank_parser import parse_rank_csv
+from amz_adlift.io.sqp_parser import parse_sqp_csv
 
 
 def estimate_sqp_organic_rank(

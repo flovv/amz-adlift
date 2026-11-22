@@ -10,30 +10,30 @@ from typing import Annotated, Any, Literal, Optional
 from fastmcp import FastMCP
 from pydantic import Field
 
-from amz_flywheel.contracts.schemas import (
+from amz_adlift.contracts.schemas import (
     AuditReport,
     KeywordQuadrantDiagnostic,
     UnifiedKeywordWeek,
 )
-from amz_flywheel.core.quadrants import classify_panel
-from amz_flywheel.io.aligner import ingest_and_align
-from amz_flywheel.io.amc_connector import (
+from amz_adlift.core.quadrants import classify_panel
+from amz_adlift.io.aligner import ingest_and_align
+from amz_adlift.io.amc_connector import (
     compute_markov_removal_effects,
     generate_amc_dsp_search_synergy_sql,
     generate_amc_flywheel_sql,
 )
-from amz_flywheel.io.bulksheet_parser import (
+from amz_adlift.io.bulksheet_parser import (
     merge_bulksheet_ids,
     parse_ads_bulksheet,
 )
-from amz_flywheel.io.sqp_parser import normalize_query
-from amz_flywheel.pro.bridge import (
+from amz_adlift.io.sqp_parser import normalize_query
+from amz_adlift.pro.bridge import (
     enrich_with_pro_elasticity,
     is_pro_available,
     require_pro,
 )
-from amz_flywheel.pro.installer import install_pro
-from amz_flywheel.reporting.html_report import generate_html_audit_report
+from amz_adlift.pro.installer import install_pro
+from amz_adlift.reporting.html_report import generate_html_audit_report
 
 CategoryName = Literal[
     "general",
@@ -74,7 +74,7 @@ QUADRANT_ACTION_PLAYBOOK: dict[str, dict[str, Any]] = {
 }
 
 mcp = FastMCP(
-    name="amz-flywheel",
+    name="amz-adlift",
     instructions=(
         "Local Amazon Paid-to-Organic Search Flywheel & Rank Elasticity Auditor. "
         "Workflow: (1) Call `audit_amazon_flywheel` with local SQP, Ads, and optional Rank CSV paths "
@@ -85,7 +85,7 @@ mcp = FastMCP(
     ),
 )
 
-# Local process state + persistent disk state at ~/.amz_flywheel/last_audit_state.json
+# Local process state + persistent disk state at ~/.amz_adlift/last_audit_state.json
 _LAST_AUDIT_STATE: dict[str, Any] = {
     "panel": [],
     "diagnostics": [],
@@ -96,7 +96,7 @@ _LAST_AUDIT_STATE: dict[str, Any] = {
 
 
 def _state_cache_file() -> Path:
-    return Path.home() / ".amz_flywheel" / "last_audit_state.json"
+    return Path.home() / ".amz_adlift" / "last_audit_state.json"
 
 
 def _normalize_fraction(value: float, default: float) -> float:
@@ -109,7 +109,7 @@ def _normalize_fraction(value: float, default: float) -> float:
 
 
 def _persist_audit_state() -> None:
-    """Persist the latest audit state to ~/.amz_flywheel/last_audit_state.json for cross-process resilience."""
+    """Persist the latest audit state to ~/.amz_adlift/last_audit_state.json for cross-process resilience."""
     try:
         cache_file = _state_cache_file()
         cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -134,7 +134,7 @@ def _persist_audit_state() -> None:
 
 
 def _ensure_audit_state_loaded() -> bool:
-    """Load persisted audit state from ~/.amz_flywheel/last_audit_state.json if in-memory state is empty."""
+    """Load persisted audit state from ~/.amz_adlift/last_audit_state.json if in-memory state is empty."""
     if _LAST_AUDIT_STATE.get("panel"):
         return True
     cache_file = _state_cache_file()
@@ -549,16 +549,16 @@ def export_ads_bulksheet(
 
 
 @mcp.tool()
-def activate_amz_flywheel_pro(
+def activate_amz_adlift_pro(
     license_key: Annotated[
         str,
         Field(
-            description="Polar.sh license key (e.g. 'AMZ_FW_PRO_...') to validate and cache for 24 hours at ~/.amz_flywheel/license.cache."
+            description="Polar.sh license key (e.g. 'AMZ_AL_PRO_...') to validate and cache for 24 hours at ~/.amz_adlift/license.cache."
         ),
     ],
 ) -> dict[str, Any]:
     """
-    Validates a Polar.sh license key and installs the compiled amz_flywheel_pro
+    Validates a Polar.sh license key and installs the compiled amz_adlift_pro
     Cython binary into the active Python environment.
     """
     return install_pro(api_key=license_key)
@@ -686,10 +686,10 @@ def generate_audit_report(
     agency_name: Annotated[
         str,
         Field(
-            default="amz-flywheel Econometrics",
+            default="amz-adlift Econometrics",
             description="White-label agency or firm name displayed in the report header.",
         ),
-    ] = "amz-flywheel Econometrics",
+    ] = "amz-adlift Econometrics",
     client_name: Annotated[
         Optional[str],
         Field(
@@ -760,7 +760,7 @@ def generate_audit_report(
 
 
 def main() -> None:
-    """Entry point for `amz-flywheel-mcp` stdio server."""
+    """Entry point for `amz-adlift-mcp` stdio server."""
     mcp.run()
 
 

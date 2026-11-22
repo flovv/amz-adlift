@@ -1,11 +1,11 @@
 """
-amz-flywheel: Zero-OAuth, local-first Python econometric package and FastMCP server
+amz-adlift: Zero-OAuth, local-first Python econometric package and FastMCP server
 quantifying the causal Amazon Paid-to-Organic Search Flywheel.
 """
 
-from amz_flywheel.contracts import (
+from amz_adlift.contracts import (
     AdsRecord,
-    AmzFlywheelError,
+    AmzAdliftError,
     AuditReport,
     InsufficientHistoryError,
     KeywordQuadrantDiagnostic,
@@ -16,13 +16,13 @@ from amz_flywheel.contracts import (
     SchemaMismatchError,
     UnifiedKeywordWeek,
 )
-from amz_flywheel.core import (
+from amz_adlift.core import (
     classify_keyword_series,
     classify_panel,
     decompose_observation,
     decompose_panel,
 )
-from amz_flywheel.io import (
+from amz_adlift.io import (
     BulkKeywordTarget,
     align_panels,
     ingest_and_align,
@@ -32,7 +32,7 @@ from amz_flywheel.io import (
     parse_rank_csv,
     parse_sqp_csv,
 )
-from amz_flywheel.pro import (
+from amz_adlift.pro import (
     detect_wheel_tags,
     enrich_with_pro_elasticity,
     get_pro_module,
@@ -42,13 +42,13 @@ from amz_flywheel.pro import (
     resolve_and_download_wheel,
     validate_polar_key,
 )
-from amz_flywheel.reporting import generate_html_audit_report
+from amz_adlift.reporting import generate_html_audit_report
 
 __version__ = "0.1.0"
 
 __all__ = [
     "AdsRecord",
-    "AmzFlywheelError",
+    "AmzAdliftError",
     "AuditReport",
     "BulkKeywordTarget",
     "InsufficientHistoryError",

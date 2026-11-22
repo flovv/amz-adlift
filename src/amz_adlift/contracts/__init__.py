@@ -1,12 +1,12 @@
 """Data contracts, Pydantic v2 schemas, and custom exceptions."""
 
-from amz_flywheel.contracts.exceptions import (
-    AmzFlywheelError,
+from amz_adlift.contracts.exceptions import (
+    AmzAdliftError,
     InsufficientHistoryError,
     ProLicenseError,
     SchemaMismatchError,
 )
-from amz_flywheel.contracts.schemas import (
+from amz_adlift.contracts.schemas import (
     AdsRecord,
     AuditReport,
     KeywordQuadrantDiagnostic,
@@ -18,7 +18,7 @@ from amz_flywheel.contracts.schemas import (
 
 __all__ = [
     "AdsRecord",
-    "AmzFlywheelError",
+    "AmzAdliftError",
     "AuditReport",
     "InsufficientHistoryError",
     "KeywordQuadrantDiagnostic",

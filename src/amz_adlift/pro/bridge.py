@@ -1,4 +1,4 @@
-"""Runtime import check and dynamic dispatch bridge for amz_flywheel_pro."""
+"""Runtime import check and dynamic dispatch bridge for amz_adlift_pro."""
 
 from __future__ import annotations
 
@@ -6,32 +6,32 @@ import importlib
 from types import ModuleType
 from typing import Any, Optional
 
-from amz_flywheel.contracts.exceptions import ProLicenseError
+from amz_adlift.contracts.exceptions import ProLicenseError
 
 
 def get_pro_module() -> Optional[ModuleType]:
-    """Attempt to import `amz_flywheel_pro` at runtime; return None if unavailable."""
+    """Attempt to import `amz_adlift_pro` at runtime; return None if unavailable."""
     try:
-        return importlib.import_module("amz_flywheel_pro")
+        return importlib.import_module("amz_adlift_pro")
     except ImportError:
         return None
 
 
 def is_pro_available() -> bool:
-    """Return True if the compiled `amz_flywheel_pro` extension is importable."""
+    """Return True if the compiled `amz_adlift_pro` extension is importable."""
     return get_pro_module() is not None
 
 
 def require_pro() -> ModuleType:
     """
-    Import and return `amz_flywheel_pro` after verifying an active license,
+    Import and return `amz_adlift_pro` after verifying an active license,
     or raise `ProLicenseError`.
     """
     mod = get_pro_module()
     if mod is None:
         raise ProLicenseError(
-            "This feature requires `amz_flywheel_pro`. Activate a Polar.sh license key via "
-            "`amz-flywheel auth install-pro --key <KEY>` or the `activate_amz_flywheel_pro` MCP tool."
+            "This feature requires `amz_adlift_pro`. Activate a Polar.sh license key via "
+            "`amz-adlift auth install-pro --key <KEY>` or the `activate_amz_adlift_pro` MCP tool."
         )
     if hasattr(mod, "assert_licensed"):
         try:
@@ -47,7 +47,7 @@ def enrich_with_pro_elasticity(
     product_margin: float = 0.35,
 ) -> dict[tuple[str, str], dict[str, Any]]:
     """
-    If `amz_flywheel_pro` is installed and licensed, run:
+    If `amz_adlift_pro` is installed and licensed, run:
       - Asymmetric Velocity-to-Rank Elasticity solver (with 90% CI & R^2)
       - Walk-Forward Out-of-Sample Backtest (MAE, MAPE, 90% PI coverage)
       - Halo-Adjusted Break-Even ACoS calculator

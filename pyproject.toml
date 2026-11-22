@@ -3,14 +3,14 @@ requires = ["hatchling>=1.18.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "amz-flywheel"
+name = "amz-adlift"
 version = "0.1.0"
 description = "Zero-OAuth, local-first Python econometric package and FastMCP server quantifying the causal Amazon Paid-to-Organic Search Flywheel."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "AMZ Flywheel Econometrics Team", email = "engineering@amz-flywheel.dev" }
+    { name = "AMZ Adlift Econometrics Team", email = "engineering@amz-adlift.dev" }
 ]
 keywords = [
     "amazon",
@@ -48,11 +48,11 @@ dev = [
 ]
 
 [project.scripts]
-amz-flywheel = "amz_flywheel.cli:app"
-amz-flywheel-mcp = "amz_flywheel.mcp_server:main"
+amz-adlift = "amz_adlift.cli:app"
+amz-adlift-mcp = "amz_adlift.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/amz_flywheel"]
+packages = ["src/amz_adlift"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

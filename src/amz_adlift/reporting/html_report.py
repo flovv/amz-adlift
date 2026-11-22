@@ -23,7 +23,7 @@ def generate_html_audit_report(
     audit_report: dict[str, Any],
     output_path: Union[str, Path],
     allocation_report: Optional[dict[str, Any]] = None,
-    agency_name: str = "amz-flywheel Econometrics",
+    agency_name: str = "amz-adlift Econometrics",
     client_name: Optional[str] = None,
     logo_url: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -521,7 +521,7 @@ def generate_html_audit_report(
     </section>
 
     <footer>
-      Generated locally with <strong>amz-flywheel</strong> &middot; Print this page (Ctrl/Cmd + P) to save as a client-ready PDF deck.
+      Generated locally with <strong>amz-adlift</strong> &middot; Print this page (Ctrl/Cmd + P) to save as a client-ready PDF deck.
     </footer>
   </div>
 
@@ -624,7 +624,7 @@ def generate_html_audit_report(
       const pts = (row && row.response_curve) || [];
       if (!pts.length) {{
         const t = svgEl("text", {{ x: 270, y: 145, "text-anchor": "middle", fill: "#64748b", "font-size": "13" }});
-        t.textContent = "Activate amz_flywheel_pro to plot Marginal Response Curves";
+        t.textContent = "Activate amz_adlift_pro to plot Marginal Response Curves";
         svg.appendChild(t);
         return;
       }}

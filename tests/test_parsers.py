@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from amz_flywheel.contracts.exceptions import SchemaMismatchError
-from amz_flywheel.io import (
+from amz_adlift.contracts.exceptions import SchemaMismatchError
+from amz_adlift.io import (
     align_panels,
     ingest_and_align,
     parse_ads_csv,

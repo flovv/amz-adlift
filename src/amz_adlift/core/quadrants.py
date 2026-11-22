@@ -7,8 +7,8 @@ import statistics
 from collections import defaultdict
 from typing import Iterable, Optional
 
-from amz_flywheel.contracts.exceptions import InsufficientHistoryError
-from amz_flywheel.contracts.schemas import (
+from amz_adlift.contracts.exceptions import InsufficientHistoryError
+from amz_adlift.contracts.schemas import (
     KeywordQuadrantDiagnostic,
     QuadrantLabel,
     UnifiedKeywordWeek,

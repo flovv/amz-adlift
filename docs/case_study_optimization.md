@@ -1,6 +1,6 @@
-# Case Study: Typical Amazon PPC Optimization vs. `amz-flywheel` Econometric Reallocation
+# Case Study: Typical Amazon PPC Optimization vs. `amz-adlift` Econometric Reallocation
 
-This case study uses synthetic keyword panel data modeled from real-world Seller Central Brand Analytics Search Query Performance (SQP), Amazon Sponsored Products, and organic rank tracking metrics. It compares standard rule-based / agency optimization against the recommendations produced by `amz-flywheel` and `amz_flywheel_pro`.
+This case study uses synthetic keyword panel data modeled from real-world Seller Central Brand Analytics Search Query Performance (SQP), Amazon Sponsored Products, and organic rank tracking metrics. It compares standard rule-based / agency optimization against the recommendations produced by `amz-adlift` and `amz_adlift_pro`.
 
 ---
 
@@ -15,9 +15,9 @@ This case study uses synthetic keyword panel data modeled from real-world Seller
 
 ---
 
-## 2. Head-to-Head Comparison: Typical PPC Rule vs. `amz-flywheel`
+## 2. Head-to-Head Comparison: Typical PPC Rule vs. `amz-adlift`
 
-| Search Query | Weekly Spend | Organic Rank | Paid ROAS (ACoS) | **Typical PPC Tool / Agency Action** | **`amz-flywheel` Quadrant & Marginal Metrics** | **`amz-flywheel` Reallocation Recommendation** |
+| Search Query | Weekly Spend | Organic Rank | Paid ROAS (ACoS) | **Typical PPC Tool / Agency Action** | **`amz-adlift` Quadrant & Marginal Metrics** | **`amz-adlift` Reallocation Recommendation** |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`brand name sleep gummies`** | $500.00 | **#1.0** | **5.0x** (20.0%) | **Increase Bids (+20%)**<br>• *"20% ACoS is well below target 40%. Star performer; bid up to capture more volume!"* | **`CANNIBALIZED_RENT`**<br>• SERP Ceiling reached ($R=1.0$)<br>• Incremental Click Share: ~28%<br>• Marginal Paid ROAS: **0.35x**<br>• Marginal Organic Halo: **0.00x**<br>• Marginal Total ROAS: **0.35x**<br>• Marginal Net Profit: **-$0.86 / $** | **Cut Weekly Spend to $286.46 (-42.7%)**<br>• 21-day rank simulation confirms rank stays at `[1.0, 1.0, 1.0]` with **zero organic loss**.<br>• Unlocks **+$154.55 / week** in pure profit by ending non-incremental cannibalization. |
 | **`organic sleep gummies for adults`** | $250.00 | **#7.0** | **2.2x** (45.5%) | **Cut Bids (-15%)**<br>• *"ACoS 45.5% exceeds 40% margin target. Unprofitable keyword; bid down to hit target ACoS."* | **`FLYWHEEL_LEVERAGE`**<br>• Rank Elasticity $\hat{\theta}^{\text{EB}} = 0.52$, $\lambda = 0.68$<br>• Marginal Paid ROAS: **1.30x**<br>• Marginal Organic Halo ROAS: **1.14x**<br>• Marginal Total ROAS: **2.44x**<br>• Halo Break-Even ACoS: **55.2%** | **Scale Weekly Spend to $572.92 (+129.2%)**<br>• Velocity pushes organic rank from #7 $\to$ #3, generating downstream organic sales that dwarf the ad spend.<br>• Cutting bids here would cause organic rank collapse. |
@@ -102,5 +102,5 @@ export_ads_bulksheet(output_path="./reports/bulk_update.xlsx")
 ### Using the Typer CLI
 ```bash
 # Reallocate weekly budget across keywords
-amz-flywheel allocate --budget 1100
+amz-adlift allocate --budget 1100
 ```

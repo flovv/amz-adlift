@@ -8,9 +8,9 @@ from datetime import date
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from amz_flywheel.contracts.exceptions import SchemaMismatchError
-from amz_flywheel.contracts.schemas import AdsRecord
-from amz_flywheel.io.sqp_parser import (
+from amz_adlift.contracts.exceptions import SchemaMismatchError
+from amz_adlift.contracts.schemas import AdsRecord
+from amz_adlift.io.sqp_parser import (
     normalize_query,
     parse_flexible_date,
     parse_localized_float,

@@ -23,8 +23,8 @@ from typing import Any, Iterable, Optional, Union
 import httpx
 from pydantic import BaseModel, Field
 
-from amz_flywheel.contracts.exceptions import SchemaMismatchError
-from amz_flywheel.io.sqp_parser import (
+from amz_adlift.contracts.exceptions import SchemaMismatchError
+from amz_adlift.io.sqp_parser import (
     normalize_query,
     parse_flexible_date,
     parse_localized_float,

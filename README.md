@@ -1,8 +1,8 @@
-# amz-flywheel
+# amz-adlift
 
 **Zero-OAuth, local-first Python econometric package & Model Context Protocol (MCP) server quantifying the causal Amazon Paid-to-Organic Search Flywheel.**
 
-`amz-flywheel` isolates pure organic search conversions from combined Amazon Brand Analytics Search Query Performance (SQP) reports, classifies every `(asin, search_query)` panel into four deterministic diagnostic quadrants, and—when paired with the compiled Cython Pro engine (`amz_flywheel_pro`)—estimates asymmetric velocity-to-rank elasticities ($\theta^{\text{EB}}_k, \lambda_k$), simulates 21-day counterfactual bid cuts, and exports ready-to-upload Amazon Ads Bulk Operations `.xlsx` spreadsheets.
+`amz-adlift` isolates pure organic search conversions from combined Amazon Brand Analytics Search Query Performance (SQP) reports, classifies every `(asin, search_query)` panel into four deterministic diagnostic quadrants, and—when paired with the compiled Cython Pro engine (`amz_adlift_pro`)—estimates asymmetric velocity-to-rank elasticities ($\theta^{\text{EB}}_k, \lambda_k$), simulates 21-day counterfactual bid cuts, and exports ready-to-upload Amazon Ads Bulk Operations `.xlsx` spreadsheets.
 
 ---
 
@@ -10,17 +10,17 @@
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ REPO 1: PUBLIC (`amz-flywheel`)                                            │
-│ • Pure readable Python (>=3.10) (`pip install amz-flywheel`)               │
+│ REPO 1: PUBLIC (`amz-adlift`)                                            │
+│ • Pure readable Python (>=3.10) (`pip install amz-adlift`)               │
 │ • Multi-format local CSV ingestor (Brand Analytics SQP + Ads + Rank logs)  │
 │ • Organic vs. Paid funnel isolation & 4-Quadrant diagnostic classifier     │
-│ • FastMCP server (`amz-flywheel-mcp`) with Tools, Resources & Prompts      │
+│ • FastMCP server (`amz-adlift-mcp`) with Tools, Resources & Prompts      │
 │ • Pro binary bridge & Polar.sh wheel installer (`install_pro(api_key)`)    │
 └─────────────────────────────────────┬──────────────────────────────────────┘
                                       │ Dynamic Runtime Bridge
                                       ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ REPO 2: PRIVATE (`amz-flywheel-pro-private` -> `amz_flywheel_pro`)         │
+│ REPO 2: PRIVATE (`amz-adlift-pro-private` -> `amz_adlift_pro`)         │
 │ • Compiled Cython C-extensions (`.so` / `.pyd`) with stripped source       │
 │ • Asymmetric Adstock-to-Rank elasticity & 21-day bid-cut simulator         │
 │ • Embedded C-level category elasticity priors (`category_priors.pyx`)      │
@@ -35,14 +35,14 @@
 ### 1. Installation
 
 ```bash
-pip install amz-flywheel
+pip install amz-adlift
 ```
 
-### 2. CLI Usage (`amz-flywheel`)
+### 2. CLI Usage (`amz-adlift`)
 
 ```bash
 # 1. Run a local Paid-to-Organic Flywheel audit from exported CSVs
-amz-flywheel audit \
+amz-adlift audit \
   --sqp ./exports/US_Search_Query_Performance_ASIN.csv \
   --ads ./exports/Sponsored_Products_Search_Term_Report.csv \
   --rank ./exports/Helium10_Keyword_Tracker.csv \
@@ -51,44 +51,44 @@ amz-flywheel audit \
   --out ./reports/flywheel_audit.json
 
 # 2. Validate Polar.sh license key and activate Pro Cython wheel (auto-matches OS/Python wheel)
-amz-flywheel auth install-pro --key "AMZ_FW_PRO_..."
+amz-adlift auth install-pro --key "AMZ_AL_PRO_..."
 
 # 3. Reallocate portfolio budget via True KKT Water-Filling Equimarginal Solver
-amz-flywheel allocate --budget 1100
+amz-adlift allocate --budget 1100
 
 # 4. Generate an interactive White-Label HTML/PDF Executive Audit Report
-amz-flywheel report \
+amz-adlift report \
   --out ./reports/client_flywheel_audit.html \
   --agency-name "Your Agency Name" \
   --client-name "Client Brand"
 
 # 5. Export upload-ready Amazon Ads Bulk Operations .xlsx (merging exact Amazon IDs & guardrails)
-amz-flywheel bulksheet \
+amz-adlift bulksheet \
   --existing-bulk ./exports/Amazon_Ads_Bulk_Operations.xlsx \
   --out ./reports/upload_ready_bulk_update.xlsx \
   --max-change 0.25 --min-bid 0.20 --max-bid 8.00
 
 # 6. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
-amz-flywheel amc sql --days 28
+amz-adlift amc sql --days 28
 
 # 7. Start the FastMCP stdio server for Claude Desktop / Cursor
-amz-flywheel mcp
+amz-adlift mcp
 ```
 
 ---
 
 ## Agentic Setup: Claude Desktop & Cursor (FastMCP)
 
-`amz-flywheel-mcp` runs 100% locally over `stdio`. Proprietary Seller Central Brand Analytics and Sponsored Products CSVs never leave the analyst's machine.
+`amz-adlift-mcp` runs 100% locally over `stdio`. Proprietary Seller Central Brand Analytics and Sponsored Products CSVs never leave the analyst's machine.
 
 ### Claude Desktop (`claude_desktop_config.json`)
 
 ```json
 {
   "mcpServers": {
-    "amz-flywheel": {
+    "amz-adlift": {
       "command": "uvx",
-      "args": ["--from", "amz-flywheel", "amz-flywheel-mcp"]
+      "args": ["--from", "amz-adlift", "amz-adlift-mcp"]
     }
   }
 }
@@ -99,8 +99,8 @@ amz-flywheel mcp
 ```json
 {
   "mcpServers": {
-    "amz-flywheel": {
-      "command": "amz-flywheel-mcp",
+    "amz-adlift": {
+      "command": "amz-adlift-mcp",
       "args": []
     }
   }
@@ -117,7 +117,7 @@ amz-flywheel mcp
 | **Tool** | `simulate_keyword_bid_cut` | Pro | Simulates 21-day organic rank trajectory ($\hat{R}_{t+1\dots t+3}$) and SERP-incrementality-adjusted net profit impact under `-25%`, `-50%`, and `-100%` PPC spend cuts. |
 | **Tool** | `export_ads_bulksheet` | Pro | Merges exact numeric `Campaign ID`, `Ad Group ID`, `Keyword ID` & live bids from Seller Central Bulk `.xlsx` exports and writes an upload-ready `Operation = Update` sheet with `min_bid`/`max_bid` guardrails and `bid_diffs`. |
 | **Tool** | `analyze_amc_clean_room` | Open Core | Generates privacy-safe AMC SQL queries (`COUNT(DISTINCT user_id) >= 100`) and computes First-Order Markov Chain Removal Effects vs. Last-Touch variance. |
-| **Tool** | `activate_amz_flywheel_pro` | Pro | Validates a Polar.sh key (fail-closed in production), auto-downloads matching platform `.whl` with SHA-256 check, and writes a 24-hour HMAC-SHA256 cache. |
+| **Tool** | `activate_amz_adlift_pro` | Pro | Validates a Polar.sh key (fail-closed in production), auto-downloads matching platform `.whl` with SHA-256 check, and writes a 24-hour HMAC-SHA256 cache. |
 | **Resource** | `flywheel://reference/quadrants` | Open Core | Machine-readable JSON of the 4 diagnostic quadrants, exact mathematical thresholds, and bid action playbooks. |
 | **Resource** | `flywheel://reference/category-priors` | Open Core + Pro | Available category elasticity priors (`general`, `supplements`, `electronics`, `home_kitchen`, `beauty`, `pet_supplies`, `apparel`). |
 | **Prompt** | `executive_flywheel_audit` | Open Core + Pro | Structured multi-step prompt guiding an LLM agent through a CFO/CMO Paid-to-Organic audit. |
@@ -127,7 +127,7 @@ amz-flywheel mcp
 ## Python SDK Usage
 
 ```python
-from amz_flywheel import ingest_and_align, classify_panel, enrich_with_pro_elasticity
+from amz_adlift import ingest_and_align, classify_panel, enrich_with_pro_elasticity
 
 # 1. Ingest and align multi-format Seller Central SQP, Ads, and Rank CSVs
 panel = ingest_and_align(
@@ -195,13 +195,13 @@ Requires $\ge 4$ aligned weeks per `(asin, search_query)`:
 
 ---
 
-## Case Study: Typical PPC Tool vs. `amz-flywheel` Optimization
+## Case Study: Typical PPC Tool vs. `amz-adlift` Optimization
 
 > *Detailed econometric walkthrough, mathematical derivations, and reproduction scripts are documented in [docs/case_study_optimization.md](docs/case_study_optimization.md).*
 
 ### Scenario: Herbal Sleep Supplement (`ASIN: B08XYZ123`, 40% Margin, $1,100/wk Budget)
 
-| Search Query | Organic Rank | Paid ROAS (ACoS) | **Typical Tool / Agency Action** | **`amz-flywheel` Econometric Diagnosis** | **`amz-flywheel` Recommendation** |
+| Search Query | Organic Rank | Paid ROAS (ACoS) | **Typical Tool / Agency Action** | **`amz-adlift` Econometric Diagnosis** | **`amz-adlift` Recommendation** |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`brand name sleep gummies`** | **#1.0** | **5.0x** (20%) | **Raise Bids (+20%)**<br>*(Star performer; low ACoS)* | **`CANNIBALIZED_RENT`**<br>SERP ceiling reached; marginal total ROAS = **0.35x** (-$0.86 net profit per dollar). | **Cut Spend: $500 $\to$ $286 (-43%)**<br>Saves $213/wk with **zero rank loss** (`[1.0, 1.0, 1.0]`). |
 | **`organic sleep gummies for adults`** | **#7.0** | **2.2x** (45.5%) | **Cut Bids (-15%)**<br>*(ACoS 45.5% > 40% target)* | **`FLYWHEEL_LEVERAGE`**<br>High rank elasticity ($\theta = 0.52$); 21d organic halo adds **1.14x**; marginal total ROAS = **2.44x**. | **Scale Spend: $250 $\to$ $573 (+129%)**<br>Drives rank from #7 $\to$ #3, unlocking organic order halo. |
@@ -216,5 +216,5 @@ Net Weekly Profit Lift:  Baseline   ──►  +$145.18 / week
 Annualized Profit Lift:  Baseline   ──►  +$7,549.36 / year (single ASIN)
 ```
 
-**Why It Works**: Traditional tools operate on **Average ROAS** and cannot distinguish incremental paid orders from cannibalized organic clicks at Rank #1. `amz-flywheel` computes **Marginal Total ROAS** across both paid and organic funnels, shifting budget out of saturated negative-marginal terms into positive-marginal flywheel drivers without increasing total spend by a single dollar.
+**Why It Works**: Traditional tools operate on **Average ROAS** and cannot distinguish incremental paid orders from cannibalized organic clicks at Rank #1. `amz-adlift` computes **Marginal Total ROAS** across both paid and organic funnels, shifting budget out of saturated negative-marginal terms into positive-marginal flywheel drivers without increasing total spend by a single dollar.
 

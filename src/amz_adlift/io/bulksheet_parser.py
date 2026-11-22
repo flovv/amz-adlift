@@ -14,8 +14,8 @@ from typing import Any, Optional, Union
 
 import openpyxl
 
-from amz_flywheel.contracts.exceptions import SchemaMismatchError
-from amz_flywheel.io.sqp_parser import normalize_query, parse_localized_float
+from amz_adlift.contracts.exceptions import SchemaMismatchError
+from amz_adlift.io.sqp_parser import normalize_query, parse_localized_float
 
 
 @dataclass(frozen=True)

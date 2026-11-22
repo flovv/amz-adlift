@@ -12,19 +12,19 @@ from typing import Any, Optional
 
 import httpx
 
-from amz_flywheel.contracts.exceptions import ProLicenseError
-from amz_flywheel.pro.bridge import get_pro_module
+from amz_adlift.contracts.exceptions import ProLicenseError
+from amz_adlift.pro.bridge import get_pro_module
 
 POLAR_VALIDATE_URL = "https://api.polar.sh/v1/customer-portal/license-keys/validate"
 DEFAULT_POLAR_ORG_ID = os.environ.get(
-    "AMZ_FLYWHEEL_POLAR_ORG_ID", "00000000-0000-0000-0000-000000000001"
+    "AMZ_ADLIFT_POLAR_ORG_ID", "00000000-0000-0000-0000-000000000001"
 )
-DEFAULT_WHEEL_MANIFEST_URL = os.environ.get("AMZ_FLYWHEEL_WHEEL_MANIFEST_URL", "")
+DEFAULT_WHEEL_MANIFEST_URL = os.environ.get("AMZ_ADLIFT_WHEEL_MANIFEST_URL", "")
 
 
 def _is_dev_test_mode() -> bool:
     """Explicit opt-in flag for local CI/pytest harnesses; disabled in production."""
-    return os.environ.get("AMZ_FLYWHEEL_DEV_TEST_MODE", "").strip().lower() in (
+    return os.environ.get("AMZ_ADLIFT_DEV_TEST_MODE", "").strip().lower() in (
         "1",
         "true",
         "yes",
@@ -35,7 +35,7 @@ def detect_wheel_tags() -> dict[str, str]:
     """
     Detect the active Python ABI tag (e.g. `cp311`) and OS/CPU platform tag
     (`manylinux`, `macosx_arm64`, `macosx_x86_64`, `win_amd64`) for selecting
-    the matching pre-compiled `amz_flywheel_pro` binary wheel.
+    the matching pre-compiled `amz_adlift_pro` binary wheel.
     """
     py_tag = f"cp{sys.version_info.major}{sys.version_info.minor}"
     sys_name = platform.system().lower()
@@ -99,12 +99,12 @@ def resolve_and_download_wheel(
     dest_dir: Optional[Path] = None,
 ) -> Optional[Path]:
     """
-    Download the matching platform `amz_flywheel_pro` wheel from either:
+    Download the matching platform `amz_adlift_pro` wheel from either:
       1. An explicit `wheel_url`,
       2. Polar.sh benefit file entries returned during key validation, or
-      3. A JSON wheel manifest (`manifest_url` or `AMZ_FLYWHEEL_WHEEL_MANIFEST_URL`).
+      3. A JSON wheel manifest (`manifest_url` or `AMZ_ADLIFT_WHEEL_MANIFEST_URL`).
     """
-    target_dir = Path(dest_dir) if dest_dir else (Path.home() / ".amz_flywheel" / "wheels")
+    target_dir = Path(dest_dir) if dest_dir else (Path.home() / ".amz_adlift" / "wheels")
     target_dir.mkdir(parents=True, exist_ok=True)
     tags = detect_wheel_tags()
 
@@ -147,7 +147,7 @@ def resolve_and_download_wheel(
 
     fname = chosen_filename or Path(chosen_url.split("?")[0]).name
     if not fname.endswith(".whl"):
-        fname = f"amz_flywheel_pro-0.1.0-{tags['python_tag']}-{tags['python_tag']}-{tags['platform_tag']}.whl"
+        fname = f"amz_adlift_pro-0.1.0-{tags['python_tag']}-{tags['python_tag']}-{tags['platform_tag']}.whl"
 
     dest_file = target_dir / fname
     try:
@@ -160,7 +160,7 @@ def resolve_and_download_wheel(
             dest_file.write_bytes(resp.content)
     except Exception as exc:
         raise ProLicenseError(
-            f"Failed to download amz_flywheel_pro wheel from {chosen_url}: {exc}"
+            f"Failed to download amz_adlift_pro wheel from {chosen_url}: {exc}"
         ) from exc
 
     if expected_sha256:
@@ -179,13 +179,13 @@ def validate_polar_key(
     or direct Polar.sh Customer Portal API.
 
     Offline prefix bypass is disabled in production and only allowed when
-    `AMZ_FLYWHEEL_DEV_TEST_MODE=1` is explicitly set for test suites.
+    `AMZ_ADLIFT_DEV_TEST_MODE=1` is explicitly set for test suites.
     """
     key = api_key.strip()
     if not key:
         raise ProLicenseError("License key cannot be empty.")
 
-    org_id = os.environ.get("AMZ_FLYWHEEL_POLAR_ORG_ID", organization_id)
+    org_id = os.environ.get("AMZ_ADLIFT_POLAR_ORG_ID", organization_id)
     pro_mod = get_pro_module()
     if pro_mod is not None and hasattr(pro_mod, "validate_license_key"):
         try:
@@ -217,7 +217,7 @@ def validate_polar_key(
     except Exception:
         pass
 
-    if _is_dev_test_mode() and key.startswith("AMZ_FW_PRO_") and len(key) >= 16:
+    if _is_dev_test_mode() and key.startswith("AMZ_AL_PRO_") and len(key) >= 16:
         return {
             "valid": True,
             "key": key,
@@ -243,7 +243,7 @@ def install_pro(
 ) -> dict[str, Any]:
     """
     Validate a Polar.sh license key, locate or download the matching platform
-    `amz_flywheel_pro` Cython wheel if not already present, install it, and write
+    `amz_adlift_pro` Cython wheel if not already present, install it, and write
     the 24-hour HMAC-SHA256 license cache.
     """
     validation = validate_polar_key(api_key, cache_path=cache_path)
@@ -259,7 +259,7 @@ def install_pro(
             tags = detect_wheel_tags()
             local_entries = [
                 {"filename": p.name, "path": p}
-                for p in sorted(Path(wheel_dir).glob("amz_flywheel_pro-*.whl"))
+                for p in sorted(Path(wheel_dir).glob("amz_adlift_pro-*.whl"))
             ]
             matched = _match_wheel_entry(local_entries, tags)
             if matched:
@@ -299,7 +299,7 @@ def install_pro(
                 pro_mod.validate_license_key(
                     api_key.strip(),
                     organization_id=os.environ.get(
-                        "AMZ_FLYWHEEL_POLAR_ORG_ID", DEFAULT_POLAR_ORG_ID
+                        "AMZ_ADLIFT_POLAR_ORG_ID", DEFAULT_POLAR_ORG_ID
                     ),
                     cache_path=str(cache_path) if cache_path else None,
                 )

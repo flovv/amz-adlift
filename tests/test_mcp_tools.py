@@ -8,16 +8,16 @@ import openpyxl
 import pytest
 from typer.testing import CliRunner
 
-HAS_PRO = importlib.util.find_spec("amz_flywheel_pro") is not None
+HAS_PRO = importlib.util.find_spec("amz_adlift_pro") is not None
 requires_pro = pytest.mark.skipif(
     not HAS_PRO,
-    reason="Optional private amz_flywheel_pro Cython extension not installed",
+    reason="Optional private amz_adlift_pro Cython extension not installed",
 )
 
-from amz_flywheel.cli import app
-from amz_flywheel.mcp_server import (
+from amz_adlift.cli import app
+from amz_adlift.mcp_server import (
     _LAST_AUDIT_STATE,
-    activate_amz_flywheel_pro,
+    activate_amz_adlift_pro,
     audit_amazon_flywheel,
     executive_flywheel_audit_prompt,
     export_ads_bulksheet,
@@ -90,7 +90,7 @@ def test_agent_resilience_normalization_and_state_persistence() -> None:
     Verifies agent-readiness features:
     - Auto-normalization when LLM passes whole percentages (38 -> 0.38, -50 -> -0.50)
     - Context-saving mode (`include_raw_panel=False`)
-    - Disk state persistence across process restarts (`~/.amz_flywheel/last_audit_state.json`)
+    - Disk state persistence across process restarts (`~/.amz_adlift/last_audit_state.json`)
     - MCP resources and prompt generation
     """
     report = audit_amazon_flywheel(
@@ -108,7 +108,7 @@ def test_agent_resilience_normalization_and_state_persistence() -> None:
     _LAST_AUDIT_STATE["panel"] = []
     _LAST_AUDIT_STATE["diagnostics"] = []
 
-    # Tool automatically reloads persisted state from ~/.amz_flywheel/last_audit_state.json
+    # Tool automatically reloads persisted state from ~/.amz_adlift/last_audit_state.json
     # and normalizes spend_change_pct=-50.0 -> -0.50
     if HAS_PRO:
         sim = simulate_keyword_bid_cut(
@@ -132,8 +132,8 @@ def test_agent_resilience_normalization_and_state_persistence() -> None:
 
 
 def test_mcp_activate_pro_and_cli_commands(tmp_path: Path) -> None:
-    """Tests activate_amz_flywheel_pro and Typer CLI audit + auth install-pro commands."""
-    auth_res = activate_amz_flywheel_pro("AMZ_FW_PRO_TEST_KEY_2026")
+    """Tests activate_amz_adlift_pro and Typer CLI audit + auth install-pro commands."""
+    auth_res = activate_amz_adlift_pro("AMZ_AL_PRO_TEST_KEY_2026")
     assert auth_res["status"] == "activated"
     assert auth_res["license"]["valid"] is True
 
@@ -166,7 +166,7 @@ def test_amc_clean_room_markov_and_red_team_flags(tmp_path: Path) -> None:
     First-Order Markov Chain Removal Effects vs. Last-Touch variance, and AMC NTB
     CSV ingestion with Adversarial Red-Team flags.
     """
-    from amz_flywheel.mcp_server import analyze_amc_clean_room
+    from amz_adlift.mcp_server import analyze_amc_clean_room
 
     amc_res = analyze_amc_clean_room(lookback_days=28)
     assert amc_res["privacy_cohort_threshold"] == 100
@@ -210,10 +210,10 @@ def test_amc_clean_room_markov_and_red_team_flags(tmp_path: Path) -> None:
 @requires_pro
 def test_optimize_budget_allocation_mcp_and_cli() -> None:
     """
-    Tests the `optimize_budget_allocation` MCP tool and `amz-flywheel allocate` CLI command,
+    Tests the `optimize_budget_allocation` MCP tool and `amz-adlift allocate` CLI command,
     verifying that keywords receive marginal response curves and equimarginal budget shifts.
     """
-    from amz_flywheel.mcp_server import optimize_budget_allocation
+    from amz_adlift.mcp_server import optimize_budget_allocation
 
     report = audit_amazon_flywheel(
         sqp_csv_path=str(FIXTURES_DIR / "sqp_multiweek.csv"),

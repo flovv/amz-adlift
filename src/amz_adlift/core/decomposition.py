@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from amz_flywheel.contracts.schemas import UnifiedKeywordWeek
+from amz_adlift.contracts.schemas import UnifiedKeywordWeek
 
 
 def decompose_observation(

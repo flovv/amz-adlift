@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-amz_flywheel_pro = pytest.importorskip(
-    "amz_flywheel_pro",
-    reason="Optional private amz_flywheel_pro Cython extension not installed",
+amz_adlift_pro = pytest.importorskip(
+    "amz_adlift_pro",
+    reason="Optional private amz_adlift_pro Cython extension not installed",
 )
-from amz_flywheel_pro import (
+from amz_adlift_pro import (
     allocate_portfolio_budget,
     compute_halo_acos,
     compute_marginal_response_curve,
@@ -126,7 +126,7 @@ def test_halo_acos_and_hmac_license_cache(tmp_path: Path) -> None:
 
     cache_file = tmp_path / "license.cache"
     res1 = validate_license_key(
-        "AMZ_FW_PRO_AGENCY_998877",
+        "AMZ_AL_PRO_AGENCY_998877",
         cache_path=str(cache_file),
     )
     assert res1["valid"] is True
@@ -134,7 +134,7 @@ def test_halo_acos_and_hmac_license_cache(tmp_path: Path) -> None:
 
     # Subsequent call hits sub-millisecond local HMAC cache
     res2 = read_license_cache(
-        api_key="AMZ_FW_PRO_AGENCY_998877",
+        api_key="AMZ_AL_PRO_AGENCY_998877",
         cache_path=str(cache_file),
     )
     assert res2 is not None
@@ -221,11 +221,11 @@ def test_marginal_response_curve_and_equimarginal_allocator() -> None:
 def test_wheel_security_audit() -> None:
     """
     Section 7 Acceptance Criterion (Wheel Security Audit):
-    Unzips every .whl built for amz_flywheel_pro and asserts zero .py or .pyx
-    files exist except amz_flywheel_pro/__init__.py.
+    Unzips every .whl built for amz_adlift_pro and asserts zero .py or .pyx
+    files exist except amz_adlift_pro/__init__.py.
     """
-    wheel_paths = glob.glob("/home/antigravity/amz-flywheel-pro-private/dist/*.whl")
-    assert wheel_paths, "Expected at least one built wheel in amz-flywheel-pro-private/dist/"
+    wheel_paths = glob.glob("/home/antigravity/amz-adlift-pro-private/dist/*.whl")
+    assert wheel_paths, "Expected at least one built wheel in amz-adlift-pro-private/dist/"
 
     for whl in wheel_paths:
         with zipfile.ZipFile(whl, "r") as zf:
@@ -234,7 +234,7 @@ def test_wheel_security_audit() -> None:
                 name
                 for name in names
                 if name.endswith((".py", ".pyx", ".pxd", ".c"))
-                and name != "amz_flywheel_pro/__init__.py"
+                and name != "amz_adlift_pro/__init__.py"
             ]
             assert not leaked_sources, f"Leaked source files in {whl}: {leaked_sources}"
             so_files = [name for name in names if name.endswith((".so", ".pyd"))]

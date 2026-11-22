@@ -8,8 +8,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
-from amz_flywheel.contracts.exceptions import SchemaMismatchError
-from amz_flywheel.contracts.schemas import SQPRecord
+from amz_adlift.contracts.exceptions import SchemaMismatchError
+from amz_adlift.contracts.schemas import SQPRecord
 
 _CURRENCY_RE = re.compile(r"[€$£¥%\s\u00a0]")
 _INT_THOUSANDS_RE = re.compile(r"^-?\d{1,3}([.,]\d{3})+$")

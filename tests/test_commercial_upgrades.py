@@ -1,6 +1,6 @@
 """
 Tests for all 4 Commercial Upgrades (tests/test_commercial_upgrades.py):
-  1. Interactive White-Label HTML/PDF Audit Report (`generate_audit_report`, `amz-flywheel report`)
+  1. Interactive White-Label HTML/PDF Audit Report (`generate_audit_report`, `amz-adlift report`)
   2. Real Amazon Ads Bulk Operations `.xlsx` Parser & Safe Bid Updater + `.xlsx` Search Term parsing
   3. True KKT Water-Filling Equimarginal Solver, Empirical Hill Fitting & Walk-Forward Backtesting
   4. Production License Hardening (fail-closed without license, no prefix bypass, platform wheel tags)
@@ -16,27 +16,27 @@ import pytest
 from typer.testing import CliRunner
 
 try:
-    import amz_flywheel_pro
+    import amz_adlift_pro
 except ImportError:
-    amz_flywheel_pro = None  # type: ignore[assignment]
+    amz_adlift_pro = None  # type: ignore[assignment]
 
 requires_pro = pytest.mark.skipif(
-    amz_flywheel_pro is None,
-    reason="Optional private amz_flywheel_pro Cython extension not installed",
+    amz_adlift_pro is None,
+    reason="Optional private amz_adlift_pro Cython extension not installed",
 )
 
-from amz_flywheel.cli import app
-from amz_flywheel.contracts.exceptions import ProLicenseError
-from amz_flywheel.io.ads_parser import parse_ads_csv
-from amz_flywheel.io.bulksheet_parser import merge_bulksheet_ids, parse_ads_bulksheet
-from amz_flywheel.mcp_server import (
+from amz_adlift.cli import app
+from amz_adlift.contracts.exceptions import ProLicenseError
+from amz_adlift.io.ads_parser import parse_ads_csv
+from amz_adlift.io.bulksheet_parser import merge_bulksheet_ids, parse_ads_bulksheet
+from amz_adlift.mcp_server import (
     audit_amazon_flywheel,
     export_ads_bulksheet,
     generate_audit_report,
     optimize_budget_allocation,
 )
-from amz_flywheel.pro.bridge import enrich_with_pro_elasticity, require_pro
-from amz_flywheel.pro.installer import detect_wheel_tags, validate_polar_key
+from amz_adlift.pro.bridge import enrich_with_pro_elasticity, require_pro
+from amz_adlift.pro.installer import detect_wheel_tags, validate_polar_key
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 runner = CliRunner()
@@ -221,7 +221,7 @@ def test_kkt_water_filling_empirical_hill_and_walk_forward_backtest() -> None:
     # 1. Empirical Hill fit with varying spend
     spends = [60.0, 95.0, 140.0, 190.0, 260.0, 320.0]
     orders = [5.0, 8.0, 11.0, 13.5, 16.0, 17.5]
-    curve = amz_flywheel_pro.compute_marginal_response_curve(
+    curve = amz_adlift_pro.compute_marginal_response_curve(
         theta_eb=0.45,
         lambda_decay=0.62,
         product_margin=0.40,
@@ -236,7 +236,7 @@ def test_kkt_water_filling_empirical_hill_and_walk_forward_backtest() -> None:
     assert curve["hill_fit_source"] == "empirical_panel"
 
     # 2. KKT Water-Filling Equimarginal Optimality
-    portfolio = amz_flywheel_pro.allocate_portfolio_budget(
+    portfolio = amz_adlift_pro.allocate_portfolio_budget(
         keyword_specs=[
             {
                 "asin": "B08XYZ123",
@@ -293,12 +293,12 @@ def test_kkt_water_filling_empirical_hill_and_walk_forward_backtest() -> None:
         ad_o.append(6.0 + 2.5 * t)
         org_o.append(4.0 + 1.4 * t)
         vols.append(12000.0 + 150.0 * math.sin(t))
-    v = amz_flywheel_pro.compute_velocity_state(ad_o, org_o, 0.60)
+    v = amz_adlift_pro.compute_velocity_state(ad_o, org_o, 0.60)
     ranks = [
         max(1.0, math.exp(3.2 - 0.42 * math.log(1.0 + v[t]) + 0.10 * math.log(1.0 + vols[t]) + rng.gauss(0.0, 0.015)))
         for t in range(16)
     ]
-    bt = amz_flywheel_pro.backtest_keyword_elasticity(
+    bt = amz_adlift_pro.backtest_keyword_elasticity(
         ad_orders=ad_o,
         organic_orders=org_o,
         organic_ranks=ranks,
@@ -312,7 +312,7 @@ def test_kkt_water_filling_empirical_hill_and_walk_forward_backtest() -> None:
     assert bt["within_90_ci_rate"] >= 0.50
 
     # 4. Rank #1.0 Cannibalized Rent bid cut yields positive 21d net profit impact
-    sim_rent = amz_flywheel_pro.simulate_bid_cut(
+    sim_rent = amz_adlift_pro.simulate_bid_cut(
         theta_eb=0.08,
         lambda_decay=0.45,
         current_rank=1.0,
@@ -358,7 +358,7 @@ def test_white_label_html_audit_report_mcp_and_cli(tmp_path: Path) -> None:
     assert "@media print" in content
     assert "Monthly Wasted Spend" in content
 
-    # CLI `amz-flywheel report`
+    # CLI `amz-adlift report`
     cli_html = tmp_path / "cli_report.html"
     cli_res = runner.invoke(
         app,
@@ -382,23 +382,23 @@ def test_production_license_gate_fail_closed_and_wheel_tags(
 ) -> None:
     """
     Verifies production license hardening:
-      - With AMZ_FLYWHEEL_DEV_TEST_MODE unset and no valid license cache,
+      - With AMZ_ADLIFT_DEV_TEST_MODE unset and no valid license cache,
         offline prefix bypass is REJECTED and Pro Cython calls fail closed.
       - Open-Core `enrich_with_pro_elasticity` degrades gracefully to `{}` instead of crashing.
       - `detect_wheel_tags()` returns valid PEP 425 Python & platform tags.
     """
-    monkeypatch.delenv("AMZ_FLYWHEEL_DEV_TEST_MODE", raising=False)
-    monkeypatch.delenv("AMZ_FLYWHEEL_LICENSE_KEY", raising=False)
-    monkeypatch.setenv("AMZ_FLYWHEEL_LICENSE_CACHE", str(tmp_path / "nonexistent.cache"))
+    monkeypatch.delenv("AMZ_ADLIFT_DEV_TEST_MODE", raising=False)
+    monkeypatch.delenv("AMZ_ADLIFT_LICENSE_KEY", raising=False)
+    monkeypatch.setenv("AMZ_ADLIFT_LICENSE_CACHE", str(tmp_path / "nonexistent.cache"))
 
     # 1. Offline prefix bypass must fail closed in production
     with pytest.raises(ProLicenseError):
-        validate_polar_key("AMZ_FW_PRO_FAKE_OFFLINE_KEY_9999")
+        validate_polar_key("AMZ_AL_PRO_FAKE_OFFLINE_KEY_9999")
 
     # 2. Pro Cython functions must enforce runtime license gate (when Pro binary is installed)
-    if amz_flywheel_pro is not None:
+    if amz_adlift_pro is not None:
         with pytest.raises(PermissionError):
-            amz_flywheel_pro.fit_keyword_elasticity(
+            amz_adlift_pro.fit_keyword_elasticity(
                 [10, 12, 14, 16], [15, 16, 18, 20], [10.0, 8.0, 6.0, 5.0], [1000, 1000, 1000, 1000]
             )
 
