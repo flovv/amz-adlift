@@ -2,6 +2,8 @@
 
 Local-first Python package, CLI, and MCP server that separates **true incremental Amazon PPC lift** from **organic cannibalization** using your exported Seller Central reports.
 
+**Docs & Interactive Examples:** https://flovv.github.io/amz-adlift/ · **Agent Skill:** https://skills.sh/flovv/amz-adlift/amz-adlift
+
 ## What You Get
 
 - **Stop paying ad rent on #1 organic keywords** — Isolates pure organic clicks and orders from combined Search Query Performance (SQP) data so you immediately see where Exact PPC is just cannibalizing clicks you already own.

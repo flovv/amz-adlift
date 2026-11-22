@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>amz-adlift — Local Amazon PPC vs. Organic Rank Audits</title>
+  <meta name="description" content="Local-first Python package, CLI, and MCP server that separates true incremental Amazon PPC lift from organic cannibalization using exported Seller Central SQP, Ads, and Rank files." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #faf9f6;
+      --surface: #ffffff;
+      --surface-subtle: #f3f1ec;
+      --ink: #161614;
+      --ink-secondary: #57534e;
+      --ink-muted: #78716c;
+      --border: #e7e5e0;
+      --border-strong: #d6d3cd;
+      --lift: #14532d;
+      --lift-bg: #ecfdf5;
+      --rent: #9a3412;
+      --rent-bg: #fff7ed;
+      --decay: #92400e;
+      --decay-bg: #fefce8;
+      --dead: #44403c;
+      --dead-bg: #f5f5f4;
+      --accent: #1c1917;
+      --font-display: "Instrument Serif", Georgia, serif;
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+      --radius: 6px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    ::selection {
+      background: #14532d;
+      color: #faf9f6;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    a {
+      color: inherit;
+      text-underline-offset: 3px;
+      text-decoration-color: var(--border-strong);
+      transition: text-decoration-color 140ms ease, color 140ms ease;
+    }
+    a:hover {
+      text-decoration-color: var(--ink);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--lift);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(250, 249, 246, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 58px;
+      gap: 20px;
+    }
+
+    .brand {
+      font-family: var(--font-mono);
+      font-weight: 500;
+      font-size: 0.95rem;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-mark {
+      width: 18px;
+      height: 18px;
+      display: inline-block;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 0.875rem;
+      color: var(--ink-secondary);
+    }
+
+    nav a {
+      text-decoration: none;
+    }
+    nav a:hover {
+      color: var(--ink);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      font-size: 0.84rem;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+    .btn:hover {
+      background: var(--surface-subtle);
+      border-color: var(--ink-muted);
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #faf9f6;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover {
+      background: #292524;
+      border-color: #292524;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 72px 0 56px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: clamp(2.5rem, 5.2vw, 4.1rem);
+      line-height: 1.06;
+      letter-spacing: -0.025em;
+      margin: 0 0 22px;
+      max-width: 18ch;
+      text-wrap: balance;
+    }
+
+    .hero-sub {
+      font-size: 1.12rem;
+      line-height: 1.62;
+      color: var(--ink-secondary);
+      max-width: 62ch;
+      margin: 0 0 32px;
+    }
+
+    /* Install bar */
+    .install-box {
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(22, 22, 20, 0.04);
+    }
+
+    .install-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-subtle);
+    }
+
+    .install-tab {
+      background: transparent;
+      border: 0;
+      border-right: 1px solid var(--border);
+      padding: 9px 14px;
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      cursor: pointer;
+      transition: background 120ms ease, color 120ms ease;
+    }
+    .install-tab:hover { color: var(--ink); }
+    .install-tab[aria-selected="true"] {
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .install-cmd-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 16px;
+      gap: 12px;
+    }
+
+    .install-cmd {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--ink);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .copy-btn {
+      flex-shrink: 0;
+      padding: 5px 10px;
+      font-size: 0.78rem;
+      font-family: var(--font-sans);
+      font-weight: 500;
+      background: var(--surface-subtle);
+      color: var(--ink);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .copy-btn:hover { background: #e7e5e0; }
+
+    /* Sections */
+    section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h2 {
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: clamp(1.9rem, 3.2vw, 2.55rem);
+      line-height: 1.12;
+      letter-spacing: -0.02em;
+      margin: 0 0 12px;
+    }
+
+    .section-lead {
+      color: var(--ink-secondary);
+      max-width: 64ch;
+      margin: 0 0 36px;
+      font-size: 1rem;
+    }
+
+    /* Benefits list (editorial 2-col with hairlines, no icon cards) */
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 48px;
+    }
+
+    .benefit-item {
+      padding: 20px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .benefit-item h3 {
+      font-size: 0.98rem;
+      font-weight: 600;
+      margin: 0 0 6px;
+      color: var(--ink);
+    }
+
+    .benefit-item p {
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--ink-secondary);
+      line-height: 1.58;
+    }
+
+    /* Interactive Case Study */
+    .case-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 2px 12px rgba(22, 22, 20, 0.03);
+    }
+
+    .quadrant-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .kw-node {
+      cursor: pointer;
+      transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    .kw-node:hover { transform: scale(1.12); }
+
+    .detail-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .detail-kw {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge-rent { background: var(--rent-bg); color: var(--rent); }
+    .badge-lift { background: var(--lift-bg); color: var(--lift); }
+    .badge-dead { background: var(--dead-bg); color: var(--dead); }
+    .badge-decay { background: var(--decay-bg); color: var(--decay); }
+
+    .kv-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 18px;
+      margin: 0 0 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kv-label {
+      font-size: 0.76rem;
+      color: var(--ink-muted);
+      display: block;
+    }
+
+    .kv-val {
+      font-family: var(--font-mono);
+      font-size: 0.96rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .compare-row {
+      padding: 12px 14px;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      font-size: 0.87rem;
+      line-height: 1.5;
+    }
+    .compare-typical {
+      background: var(--surface-subtle);
+      color: var(--ink-secondary);
+    }
+    .compare-adlift {
+      background: var(--lift-bg);
+      color: #14532d;
+    }
+    .compare-row strong {
+      display: block;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+
+    .kw-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .kw-pill {
+      padding: 6px 11px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      color: var(--ink-secondary);
+      cursor: pointer;
+    }
+    .kw-pill[aria-pressed="true"] {
+      background: var(--accent);
+      color: #faf9f6;
+      border-color: var(--accent);
+    }
+
+    .portfolio-bar {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      padding: 18px 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .portfolio-bar .kv-val {
+      font-size: 1.12rem;
+    }
+    .val-positive { color: var(--lift); }
+
+    /* Code Examples Tabs */
+    .code-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0;
+    }
+
+    .code-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      padding: 10px 16px;
+      font-family: var(--font-sans);
+      font-size: 0.86rem;
+      font-weight: 500;
+      color: var(--ink-secondary);
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      margin-bottom: -1px;
+    }
+    .code-tab:hover { color: var(--ink); }
+    .code-tab[aria-selected="true"] {
+      background: var(--surface);
+      color: var(--ink);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    .code-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: 0;
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 22px;
+    }
+
+    .code-panel[hidden] { display: none; }
+
+    .code-caption {
+      font-size: 0.9rem;
+      color: var(--ink-secondary);
+      margin: 0 0 14px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 16px 18px;
+      background: #1c1917;
+      color: #f5f5f4;
+      border-radius: 5px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .code-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    /* Tables */
+    .table-wrap {
+      overflow-x: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ink-secondary);
+      background: var(--surface-subtle);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    td code {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      background: var(--surface-subtle);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0 56px;
+      font-size: 0.86rem;
+      color: var(--ink-secondary);
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 22px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 860px) {
+      .benefits-grid,
+      .case-layout,
+      .code-split,
+      .portfolio-bar {
+        grid-template-columns: 1fr;
+      }
+      nav { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container nav-inner">
+      <a class="brand" href="#">
+        <svg class="brand-mark" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <rect x="2" y="11" width="4" height="7" rx="1" fill="#a8a29e" />
+          <rect x="8" y="7" width="4" height="11" rx="1" fill="#57534e" />
+          <rect x="14" y="2" width="4" height="16" rx="1" fill="#14532d" />
+        </svg>
+        amz-adlift
+      </a>
+      <nav aria-label="Primary">
+        <a href="#benefits">Benefits</a>
+        <a href="#example">Interactive Example</a>
+        <a href="#workflows">Workflows</a>
+        <a href="#formats">Exports &amp; Math</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn" href="https://skills.sh/flovv/amz-adlift/amz-adlift" target="_blank" rel="noopener">skills.sh</a>
+        <a class="btn btn-primary" href="https://github.com/flovv/amz-adlift" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="container">
+        <h1>See which Amazon ads actually lift organic rank — and which ones just pay rent.</h1>
+        <p class="hero-sub">
+          <code>amz-adlift</code> is a local-first Python package, CLI, and MCP server that joins your exported Seller Central Search Query Performance (SQP), Amazon Ads Search Term, and keyword rank files to separate pure organic demand from incremental PPC lift. No OAuth, no cloud uploads.
+        </p>
+
+        <div class="install-box" role="region" aria-label="Install commands">
+          <div class="install-tabs" role="tablist">
+            <button class="install-tab" role="tab" aria-selected="true" data-cmd="pip install amz-adlift">Python / CLI</button>
+            <button class="install-tab" role="tab" aria-selected="false" data-cmd="npx skills add flovv/amz-adlift">Agent Skill (skills.sh)</button>
+            <button class="install-tab" role="tab" aria-selected="false" data-cmd="uvx --from amz-adlift amz-adlift-mcp">MCP Server</button>
+          </div>
+          <div class="install-cmd-row">
+            <code class="install-cmd" id="install-cmd">pip install amz-adlift</code>
+            <button class="copy-btn" id="copy-install" type="button">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section id="benefits">
+      <div class="container">
+        <h2>What you get</h2>
+        <p class="section-lead">Built for Amazon brand operators, PPC managers, agencies, and AI coding agents who want auditable numbers instead of Average-ACoS guesswork.</p>
+
+        <div class="benefits-grid">
+          <div class="benefit-item">
+            <h3>Stop paying ad rent on #1 organic terms</h3>
+            <p>Subtracts Ads clicks and orders from weekly SQP totals to expose pure organic conversion rates and flag keywords where Exact PPC is just cannibalizing clicks you already own.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Spot real paid-to-organic rank leverage</h3>
+            <p>Classifies every <code>(asin, search_query)</code> into four deterministic quadrants using rank velocity slopes and lagged paid-to-organic correlations instead of raw Average ACoS.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Zero OAuth, 100% local privacy</h3>
+            <p>Runs directly on your exported CSV and XLSX reports. No SP-API credentials, no Ads API tokens, and no third-party SaaS ingesting your Seller Central data.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Parses real, messy Seller Central exports</h3>
+            <p>Auto-detects SQP ASIN View and Brand View banners, Legacy Sponsored Products, 2026 Unified Reporting, native <code>.xlsx</code> Search Term files, and US/UK or EU/DE number formats.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Client-ready HTML/PDF reports in one command</h3>
+            <p>Generates self-contained white-label audit decks with interactive 4-quadrant charts and print-to-PDF styling for agency reviews and CFO sign-off.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Native MCP server &amp; skills.sh integration</h3>
+            <p>Connect directly to Claude Desktop or Cursor over local <code>stdio</code>, or install the agent skill with <code>npx skills add flovv/amz-adlift</code> for guided audits.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="example">
+      <div class="container">
+        <h2>Interactive example: Average ACoS vs. amz-adlift</h2>
+        <p class="section-lead">
+          Four real-world keyword profiles from a single ASIN (<code>B08XYZ123</code>, 40% pre-ad margin, $1,100/week PPC budget). Select any keyword to compare what a standard ACoS rule does against what <code>amz-adlift</code> diagnoses.
+        </p>
+
+        <div class="case-layout">
+          <div class="panel">
+            <svg class="quadrant-svg" viewBox="0 0 540 340" role="img" aria-label="4-Quadrant diagnostic plot of Organic Rank versus Marginal Total ROAS">
+              <!-- Grid background -->
+              <rect x="54" y="18" width="224" height="140" fill="#fff7ed" opacity="0.55" />
+              <rect x="278" y="18" width="244" height="140" fill="#ecfdf5" opacity="0.65" />
+              <rect x="54" y="158" width="224" height="136" fill="#f5f5f4" opacity="0.7" />
+              <rect x="278" y="158" width="244" height="136" fill="#fefce8" opacity="0.6" />
+
+              <!-- Axes & Dividers -->
+              <line x1="54" y1="158" x2="522" y2="158" stroke="#d6d3cd" stroke-dasharray="4 4" />
+              <line x1="278" y1="18" x2="278" y2="294" stroke="#d6d3cd" stroke-dasharray="4 4" />
+              <rect x="54" y="18" width="468" height="276" fill="none" stroke="#d6d3cd" />
+
+              <!-- Quadrant labels -->
+              <text x="66" y="38" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#9a3412" font-weight="500">CANNIBALIZED_RENT</text>
+              <text x="290" y="38" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#14532d" font-weight="500">FLYWHEEL_LEVERAGE</text>
+              <text x="66" y="178" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#57534e" font-weight="500">TREADMILL_DEAD_WEIGHT</text>
+              <text x="290" y="178" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#92400e" font-weight="500">AT_RISK_DECAY</text>
+
+              <!-- Axis captions -->
+              <text x="288" y="324" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#57534e">Marginal Total ROAS (Paid + 21d Organic Halo) →</text>
+              <text x="18" y="158" text-anchor="middle" font-family="Inter, sans-serif" font-size="11.5" fill="#57534e" transform="rotate(-90 18 158)">Organic Rank Position</text>
+
+              <!-- Data points -->
+              <g class="kw-node" data-kw="rent" tabindex="0" role="button" aria-label="Select brand name sleep gummies">
+                <circle cx="110" cy="78" r="16" fill="#9a3412" fill-opacity="0.16" stroke="#9a3412" stroke-width="2" />
+                <circle cx="110" cy="78" r="5" fill="#9a3412" />
+                <text x="110" y="109" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#161614">brand name sleep gummies</text>
+              </g>
+
+              <g class="kw-node" data-kw="lift" tabindex="0" role="button" aria-label="Select organic sleep gummies for adults">
+                <circle cx="388" cy="102" r="18" fill="#14532d" fill-opacity="0.16" stroke="#14532d" stroke-width="2" />
+                <circle cx="388" cy="102" r="5" fill="#14532d" />
+                <text x="388" y="135" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#161614">organic sleep gummies for adults</text>
+              </g>
+
+              <g class="kw-node" data-kw="dead" tabindex="0" role="button" aria-label="Select melatonin free sleep supplement">
+                <circle cx="148" cy="244" r="14" fill="#44403c" fill-opacity="0.16" stroke="#44403c" stroke-width="2" />
+                <circle cx="148" cy="244" r="5" fill="#44403c" />
+                <text x="148" y="274" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#161614">melatonin free sleep supplement</text>
+              </g>
+
+              <g class="kw-node" data-kw="decay" tabindex="0" role="button" aria-label="Select tart cherry sleep aid">
+                <circle cx="456" cy="224" r="13" fill="#92400e" fill-opacity="0.18" stroke="#92400e" stroke-width="2" />
+                <circle cx="456" cy="224" r="5" fill="#92400e" />
+                <text x="456" y="254" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#161614">tart cherry sleep aid</text>
+              </g>
+            </svg>
+
+            <div class="kw-selector" aria-label="Select keyword">
+              <button class="kw-pill" type="button" data-kw="rent" aria-pressed="true">brand name sleep gummies</button>
+              <button class="kw-pill" type="button" data-kw="lift" aria-pressed="false">organic sleep gummies for adults</button>
+              <button class="kw-pill" type="button" data-kw="dead" aria-pressed="false">melatonin free sleep supplement</button>
+              <button class="kw-pill" type="button" data-kw="decay" aria-pressed="false">tart cherry sleep aid</button>
+            </div>
+          </div>
+
+          <div class="panel" id="kw-detail" aria-live="polite">
+            <div class="detail-header">
+              <h3 class="detail-kw" id="d-kw">brand name sleep gummies</h3>
+              <span class="badge badge-rent" id="d-badge">CANNIBALIZED_RENT</span>
+            </div>
+
+            <div class="kv-list">
+              <div><span class="kv-label">Organic Rank</span><span class="kv-val" id="d-rank">#1.0</span></div>
+              <div><span class="kv-label">Observed ACoS (Avg ROAS)</span><span class="kv-val" id="d-acos">20.0% (5.0x)</span></div>
+              <div><span class="kv-label">Marginal Total ROAS</span><span class="kv-val" id="d-mroas">0.35x</span></div>
+              <div><span class="kv-label">Weekly Spend Shift</span><span class="kv-val" id="d-shift">$500 → $286 (-43%)</span></div>
+            </div>
+
+            <div class="compare-row compare-typical">
+              <strong>Typical Average-ACoS Rule</strong>
+              <span id="d-typical">Raises bids +20% because 20% ACoS is well below the 40% target — pouring more budget into clicks you already own organically at Rank #1.</span>
+            </div>
+
+            <div class="compare-row compare-adlift">
+              <strong>amz-adlift Diagnosis</strong>
+              <span id="d-adlift">Rank ceiling reached (#1.0) with ~72% organic click cannibalization. Marginal profit is -$0.86 per ad dollar. Cutting spend saves $213.54/wk with zero rank loss.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="portfolio-bar">
+          <div>
+            <span class="kv-label">Total Weekly PPC Budget</span>
+            <span class="kv-val">$1,100.00 → $1,100.01 (0% increase)</span>
+          </div>
+          <div>
+            <span class="kv-label">Net Weekly Profit Lift</span>
+            <span class="kv-val val-positive">+$145.18 / week</span>
+          </div>
+          <div>
+            <span class="kv-label">Annualized Single-ASIN Lift</span>
+            <span class="kv-val val-positive">+$7,549.36 / year</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflows">
+      <div class="container">
+        <h2>Real workflows &amp; code examples</h2>
+        <p class="section-lead">Use <code>amz-adlift</code> from your terminal, wire it into Claude Desktop or Cursor via MCP, import it in Python notebooks, or install the agent skill.</p>
+
+        <div class="code-tabs" role="tablist" aria-label="Workflow examples">
+          <button class="code-tab" role="tab" aria-selected="true" data-panel="panel-cli">CLI</button>
+          <button class="code-tab" role="tab" aria-selected="false" data-panel="panel-mcp">Claude / Cursor MCP</button>
+          <button class="code-tab" role="tab" aria-selected="false" data-panel="panel-python">Python SDK</button>
+          <button class="code-tab" role="tab" aria-selected="false" data-panel="panel-skill">Agent Skill</button>
+        </div>
+
+        <div class="code-panel" id="panel-cli" role="tabpanel">
+          <p class="code-caption">Run a full paid-vs-organic audit, render a client-ready HTML/PDF deck, or export an upload-ready Amazon Ads bulksheet from local files.</p>
+          <pre><code># 1. Audit exported Seller Central SQP, Ads, and Rank CSV/XLSX files
+amz-adlift audit \
+  --sqp ./exports/US_Search_Query_Performance_ASIN.csv \
+  --ads ./exports/Sponsored_Products_Search_Term_Report.xlsx \
+  --rank ./exports/Helium10_Keyword_Tracker.csv \
+  --category supplements \
+  --margin 0.38 \
+  --out ./reports/adlift_audit.json
+
+# 2. Generate a white-label HTML/PDF executive audit report
+amz-adlift report \
+  --out ./reports/client_audit.html \
+  --agency-name "Apex Marketplace Partners" \
+  --client-name "SleepWell Naturals"
+
+# 3. Generate privacy-safe AMC Clean Room SQL (HAVING COUNT(DISTINCT user_id) >= 100)
+amz-adlift amc sql --days 28
+
+# 4. Pro: Reallocate weekly budget &amp; export Seller Central Bulk .xlsx with bid guardrails
+amz-adlift allocate --budget 1100
+amz-adlift bulksheet \
+  --existing-bulk ./exports/Amazon_Ads_Bulk_Operations.xlsx \
+  --out ./reports/upload_ready_bulk_update.xlsx \
+  --max-change 0.25 --min-bid 0.20 --max-bid 8.00</code></pre>
+        </div>
+
+        <div class="code-panel" id="panel-mcp" role="tabpanel" hidden>
+          <p class="code-caption">Add <code>amz-adlift-mcp</code> to Claude Desktop (<code>claude_desktop_config.json</code>) or Cursor (<code>.cursor/mcp.json</code>). All CSVs stay on your machine.</p>
+          <div class="code-split">
+            <pre><code>// claude_desktop_config.json
+{
+  "mcpServers": {
+    "amz-adlift": {
+      "command": "uvx",
+      "args": [
+        "--from", "amz-adlift",
+        "amz-adlift-mcp"
+      ]
+    }
+  }
+}</code></pre>
+            <pre><code># Example prompt in Claude / Cursor:
+"Audit ./exports/sqp_q3.csv,
+ ./exports/ads_search_terms.xlsx, and
+ ./exports/helium10_ranks.csv for
+ category=supplements at 38% margin.
+
+ Flag any CANNIBALIZED_RENT keywords,
+ check attribution_window_gap warnings,
+ and render a white-label HTML report
+ to ./reports/q3_audit.html."</code></pre>
+          </div>
+        </div>
+
+        <div class="code-panel" id="panel-python" role="tabpanel" hidden>
+          <p class="code-caption">Integrate funnel decomposition and 4-quadrant classification directly into notebooks, scheduled jobs, or agency pipelines.</p>
+          <pre><code>from amz_adlift import ingest_and_align, classify_panel, enrich_with_pro_elasticity
+
+# 1. Normalize &amp; align SQP, Ads (CSV or XLSX), and Rank logs to SQP weekly buckets
+panel = ingest_and_align(
+    sqp_csv_path="tests/fixtures/sqp_multiweek.csv",
+    ads_csv_path="tests/fixtures/ads_multiweek.csv",
+    rank_csv_path="tests/fixtures/rank_multiweek.csv",
+)
+
+# 2. Classify every (asin, search_query) with &gt;= 4 aligned weeks
+diagnostics = classify_panel(panel, category="supplements", strict=True)
+for d in diagnostics:
+    print(f"{d.search_query:32s} {d.quadrant:22s} {d.diagnostic_summary}")
+
+# 3. Optional: attach Pro rank elasticities &amp; Halo Break-Even ACoS if licensed
+pro_metrics = enrich_with_pro_elasticity(panel, category="supplements", product_margin=0.38)</code></pre>
+        </div>
+
+        <div class="code-panel" id="panel-skill" role="tabpanel" hidden>
+          <p class="code-caption">Install the official Agent Skill so Claude Code, Cursor, Codex, and Antigravity know the exact CLI flags, quadrant rules, and bulksheet safety guardrails.</p>
+          <pre><code># Install into your workspace or global agent skills directory
+npx skills add flovv/amz-adlift
+
+# What the skill teaches your agent automatically:
+# - Requests SQP, Ads, Rank, margin, and category inputs before running
+# - Uses include_raw_panel=False in MCP to keep context windows lean
+# - Checks attribution_window_gap and AMC repeat-customer cannibalization flags
+# - Requires --existing-bulk plus --max-change / --min-bid / --max-bid guardrails</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="formats">
+      <div class="container">
+        <h2>Supported exports &amp; funnel math</h2>
+        <p class="section-lead">Every parser normalizes US/UK (<code>1,234.56</code>, <code>$</code>, <code>£</code>) and EU/DE (<code>1.234,56</code>, <code>€</code>) numbers and aligns dates to Amazon SQP Sunday–Saturday weeks.</p>
+
+        <div class="table-wrap" style="margin-bottom: 28px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Export Source</th>
+                <th>Accepted Formats</th>
+                <th>Handled Variations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Brand Analytics SQP</strong></td>
+                <td><code>.csv</code> (single file or directory of weekly exports)</td>
+                <td>Row 1 metadata banners (<code>ASIN=[...]</code>, <code>Select Week=[...]</code>), ASIN View and Brand View counts</td>
+              </tr>
+              <tr>
+                <td><strong>Amazon Ads Search Term</strong></td>
+                <td><code>.csv</code> and native Seller Central <code>.xlsx</code></td>
+                <td>Legacy Sponsored Products, 2026 Unified Reporting (<code>Total cost</code>, <code>Purchases</code>), and German/EU headers</td>
+              </tr>
+              <tr>
+                <td><strong>Keyword Rank Tracker</strong></td>
+                <td><code>.csv</code></td>
+                <td>Helium 10 Keyword Tracker, DataDive, Perpetua, or generic <code>Keyword, Date, Organic Rank</code> logs</td>
+              </tr>
+              <tr>
+                <td><strong>Amazon Ads Bulksheet</strong></td>
+                <td><code>.xlsx</code></td>
+                <td>Reads exact numeric <code>Campaign ID</code>, <code>Ad Group ID</code>, <code>Keyword ID</code>, and live bids for safe <code>Operation = Update</code> writes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Quadrant</th>
+                <th>Deterministic Criteria (&ge; 4 aligned weeks)</th>
+                <th>Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge badge-rent">CANNIBALIZED_RENT</span></td>
+                <td>4w median organic rank <code>&le; 2.5</code>, pure organic CVR <code>&ge; 12%</code>, weekly spend <code>&ge; $50</code> (or top 25%).</td>
+                <td>Step down Exact CPC bids 15%–25% to stop paying rent on organic clicks.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-lift">FLYWHEEL_LEVERAGE</span></td>
+                <td>Rank slope <code>&le; -0.5</code> pos/wk (climbing) and lagged paid-to-organic correlation <code>&rho; &ge; 0.35</code>.</td>
+                <td>Scale bids up to Halo-Adjusted Break-Even ACoS (margin &times; organic halo multiplier).</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-dead">TREADMILL_DEAD_WEIGHT</span></td>
+                <td>4w spend <code>&ge; $100</code>, rank stagnant worse than #10, and SQP CVR <code>&lt; 50%</code> of category median.</td>
+                <td>Cut bids 25%–50% or negate until listing CVR and offer are fixed.</td>
+              </tr>
+              <tr>
+                <td><span class="badge badge-decay">AT_RISK_DECAY</span></td>
+                <td>Rank slope <code>&ge; +0.75</code> pos/wk (slipping) with declining SQP Brand Click Share.</td>
+                <td>Simulate bid cuts and deploy defensive Sponsored Products bids where halo is positive.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span><strong>amz-adlift</strong> — MIT-licensed Open Core + optional Pro Cython engine.</span>
+      <div class="footer-links">
+        <a href="https://github.com/flovv/amz-adlift" target="_blank" rel="noopener">GitHub Repo</a>
+        <a href="https://skills.sh/flovv/amz-adlift/amz-adlift" target="_blank" rel="noopener">skills.sh</a>
+        <a href="https://github.com/flovv/amz-adlift/blob/main/docs/case_study_optimization.md" target="_blank" rel="noopener">Full Case Study</a>
+        <a href="https://github.com/flovv/amz-adlift/blob/main/skills/amz-adlift/SKILL.md" target="_blank" rel="noopener">SKILL.md</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Install command tabs + copy
+    const installCmd = document.getElementById("install-cmd");
+    const copyBtn = document.getElementById("copy-install");
+    document.querySelectorAll(".install-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".install-tab").forEach((t) => t.setAttribute("aria-selected", "false"));
+        tab.setAttribute("aria-selected", "true");
+        installCmd.textContent = tab.dataset.cmd;
+        copyBtn.textContent = "Copy";
+      });
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(installCmd.textContent);
+        copyBtn.textContent = "Copied";
+        setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+      } catch {
+        copyBtn.textContent = "Select & copy";
+      }
+    });
+
+    // Interactive Case Study Explorer
+    const kwData = {
+      rent: {
+        kw: "brand name sleep gummies",
+        quadrant: "CANNIBALIZED_RENT",
+        badgeClass: "badge badge-rent",
+        rank: "#1.0",
+        acos: "20.0% (5.0x)",
+        mroas: "0.35x",
+        shift: "$500 → $286 (-43%)",
+        typical: "Raises bids +20% because 20% ACoS is well below the 40% target — pouring more budget into clicks you already own organically at Rank #1.",
+        adlift: "Rank ceiling reached (#1.0) with ~72% organic click cannibalization. Marginal profit is -$0.86 per ad dollar. Cutting spend saves $213.54/wk with zero rank loss."
+      },
+      lift: {
+        kw: "organic sleep gummies for adults",
+        quadrant: "FLYWHEEL_LEVERAGE",
+        badgeClass: "badge badge-lift",
+        rank: "#7.0",
+        acos: "45.5% (2.2x)",
+        mroas: "2.44x",
+        shift: "$250 → $573 (+129%)",
+        typical: "Cuts bids -15% because 45.5% ACoS exceeds the 40% margin target — accidentally starving the exact term driving organic rank growth.",
+        adlift: "High rank elasticity (θ = 0.52) adds 1.14x in 21-day organic halo revenue, raising Halo Break-Even ACoS to 55.2%. Scaling spend pushes organic rank from #7 to #3."
+      },
+      dead: {
+        kw: "melatonin free sleep supplement",
+        quadrant: "TREADMILL_DEAD_WEIGHT",
+        badgeClass: "badge badge-dead",
+        rank: "#48.0",
+        acos: "71.4% (1.4x)",
+        mroas: "0.68x",
+        shift: "$300 → $69 (-77%)",
+        typical: "Holds spend steady to 'keep pushing for organic rank', burning $300/week with no measurable rank movement.",
+        adlift: "Near-zero rank elasticity (θ = 0.05) and listing CVR under 50% of category median. Slashing spend frees $231.25/wk for keywords that actually convert."
+      },
+      decay: {
+        kw: "tart cherry sleep aid",
+        quadrant: "AT_RISK_DECAY",
+        badgeClass: "badge badge-decay",
+        rank: "#4.5 (slipping)",
+        acos: "47.6% (2.1x)",
+        mroas: "3.42x",
+        shift: "$50 → $172 (+244%)",
+        typical: "Deprioritizes or bids down because observed ACoS is 47.6% on low volume — letting organic rank slide off the top of page 1.",
+        adlift: "Strong organic halo (2.26x) means every extra ad dollar yields +$0.37 net profit while defending Top-3 organic placement."
+      }
+    };
+
+    function selectKw(key) {
+      const item = kwData[key];
+      if (!item) return;
+      document.getElementById("d-kw").textContent = item.kw;
+      const badge = document.getElementById("d-badge");
+      badge.textContent = item.quadrant;
+      badge.className = item.badgeClass;
+      document.getElementById("d-rank").textContent = item.rank;
+      document.getElementById("d-acos").textContent = item.acos;
+      document.getElementById("d-mroas").textContent = item.mroas;
+      document.getElementById("d-shift").textContent = item.shift;
+      document.getElementById("d-typical").textContent = item.typical;
+      document.getElementById("d-adlift").textContent = item.adlift;
+
+      document.querySelectorAll(".kw-pill").forEach((pill) => {
+        pill.setAttribute("aria-pressed", pill.dataset.kw === key ? "true" : "false");
+      });
+    }
+
+    document.querySelectorAll(".kw-pill, .kw-node").forEach((el) => {
+      el.addEventListener("click", () => selectKw(el.dataset.kw));
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          selectKw(el.dataset.kw);
+        }
+      });
+    });
+
+    // Workflow code tabs
+    document.querySelectorAll(".code-tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".code-tab").forEach((t) => t.setAttribute("aria-selected", "false"));
+        document.querySelectorAll(".code-panel").forEach((p) => (p.hidden = true));
+        tab.setAttribute("aria-selected", "true");
+        document.getElementById(tab.dataset.panel).hidden = false;
+      });
+    });
+  </script>
+</body>
+</html>
