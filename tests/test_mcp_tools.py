@@ -1,11 +1,18 @@
 """FastMCP Server Tools, Resources, Prompts & Typer CLI Tests (tests/test_mcp_tools.py)."""
 
+import importlib.util
 import json
 from pathlib import Path
 
 import openpyxl
 import pytest
 from typer.testing import CliRunner
+
+HAS_PRO = importlib.util.find_spec("amz_flywheel_pro") is not None
+requires_pro = pytest.mark.skipif(
+    not HAS_PRO,
+    reason="Optional private amz_flywheel_pro Cython extension not installed",
+)
 
 from amz_flywheel.cli import app
 from amz_flywheel.mcp_server import (
@@ -42,39 +49,40 @@ def test_mcp_audit_simulate_and_bulksheet_tools(tmp_path: Path) -> None:
     assert report["quadrant_counts"]["AT_RISK_DECAY"] == 1
     assert "quadrant_playbook" in report
 
-    # Pro simulation tool
-    sim = simulate_keyword_bid_cut(
-        search_query="organic sleep aid capsules",
-        asin="B08XYZ123",
-        spend_change_pct=-0.50,
-        horizon_weeks=3,
-    )
-    assert sim["asin"] == "B08XYZ123"
-    assert sim["search_query"] == "organic sleep aid capsules"
-    assert sim["data_source"] == "audited_panel"
-    assert len(sim["projected_ranks"]) == 3
-    assert "-25%" in sim["scenarios"]
-    assert "-50%" in sim["scenarios"]
-    assert "-100%" in sim["scenarios"]
+    if HAS_PRO:
+        # Pro simulation tool
+        sim = simulate_keyword_bid_cut(
+            search_query="organic sleep aid capsules",
+            asin="B08XYZ123",
+            spend_change_pct=-0.50,
+            horizon_weeks=3,
+        )
+        assert sim["asin"] == "B08XYZ123"
+        assert sim["search_query"] == "organic sleep aid capsules"
+        assert sim["data_source"] == "audited_panel"
+        assert len(sim["projected_ranks"]) == 3
+        assert "-25%" in sim["scenarios"]
+        assert "-50%" in sim["scenarios"]
+        assert "-100%" in sim["scenarios"]
 
-    # Pro Amazon Ads Bulk Operations spreadsheet export
-    bulk_xlsx = tmp_path / "bulk_ops.xlsx"
-    bulk_res = export_ads_bulksheet(
-        output_path=str(bulk_xlsx),
-        max_bid_change_pct=0.25,
-    )
-    assert bulk_res["rows_written"] == 4
-    assert bulk_res["operation"] == "Update"
-    assert bulk_xlsx.exists()
+        # Pro Amazon Ads Bulk Operations spreadsheet export
+        bulk_xlsx = tmp_path / "bulk_ops.xlsx"
+        bulk_res = export_ads_bulksheet(
+            output_path=str(bulk_xlsx),
+            max_bid_change_pct=0.25,
+        )
+        assert bulk_res["rows_written"] == 4
+        assert bulk_res["operation"] == "Update"
+        assert bulk_xlsx.exists()
 
-    wb = openpyxl.load_workbook(bulk_xlsx)
-    ws = wb["Sponsored Products Campaigns"]
-    rows = list(ws.iter_rows(values_only=True))
-    assert len(rows) == 5  # 1 header + 4 keyword rows
-    assert rows[0][2] == "Operation"
-    for data_row in rows[1:]:
-        assert data_row[2] == "Update"
-        assert float(data_row[11]) > 0.0
+        wb = openpyxl.load_workbook(bulk_xlsx)
+        ws = wb["Sponsored Products Campaigns"]
+        rows = list(ws.iter_rows(values_only=True))
+        assert len(rows) == 5  # 1 header + 4 keyword rows
+        assert rows[0][2] == "Operation"
+        for data_row in rows[1:]:
+            assert data_row[2] == "Update"
+            assert float(data_row[11]) > 0.0
 
 
 def test_agent_resilience_normalization_and_state_persistence() -> None:
@@ -102,14 +110,15 @@ def test_agent_resilience_normalization_and_state_persistence() -> None:
 
     # Tool automatically reloads persisted state from ~/.amz_flywheel/last_audit_state.json
     # and normalizes spend_change_pct=-50.0 -> -0.50
-    sim = simulate_keyword_bid_cut(
-        search_query="organic sleep aid capsules",
-        asin="ANY",
-        spend_change_pct=-50.0,
-        horizon_weeks=3,
-    )
-    assert sim["data_source"] == "audited_panel"
-    assert sim["spend_change_pct"] == pytest.approx(-0.50)
+    if HAS_PRO:
+        sim = simulate_keyword_bid_cut(
+            search_query="organic sleep aid capsules",
+            asin="ANY",
+            spend_change_pct=-50.0,
+            horizon_weeks=3,
+        )
+        assert sim["data_source"] == "audited_panel"
+        assert sim["spend_change_pct"] == pytest.approx(-0.50)
 
     # Verify MCP resources and prompt
     quads_json = json.loads(get_quadrant_definitions_resource())
@@ -198,6 +207,7 @@ def test_amc_clean_room_markov_and_red_team_flags(tmp_path: Path) -> None:
     )
 
 
+@requires_pro
 def test_optimize_budget_allocation_mcp_and_cli() -> None:
     """
     Tests the `optimize_budget_allocation` MCP tool and `amz-flywheel allocate` CLI command,

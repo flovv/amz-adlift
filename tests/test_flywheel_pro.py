@@ -11,7 +11,10 @@ from pathlib import Path
 
 import pytest
 
-import amz_flywheel_pro
+amz_flywheel_pro = pytest.importorskip(
+    "amz_flywheel_pro",
+    reason="Optional private amz_flywheel_pro Cython extension not installed",
+)
 from amz_flywheel_pro import (
     allocate_portfolio_budget,
     compute_halo_acos,

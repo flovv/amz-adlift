@@ -15,7 +15,16 @@ import openpyxl
 import pytest
 from typer.testing import CliRunner
 
-import amz_flywheel_pro
+try:
+    import amz_flywheel_pro
+except ImportError:
+    amz_flywheel_pro = None  # type: ignore[assignment]
+
+requires_pro = pytest.mark.skipif(
+    amz_flywheel_pro is None,
+    reason="Optional private amz_flywheel_pro Cython extension not installed",
+)
+
 from amz_flywheel.cli import app
 from amz_flywheel.contracts.exceptions import ProLicenseError
 from amz_flywheel.io.ads_parser import parse_ads_csv
@@ -99,6 +108,7 @@ def _create_mock_amazon_bulksheet(path: Path) -> Path:
     return path
 
 
+@requires_pro
 def test_real_amazon_bulksheet_merge_and_guardrails(tmp_path: Path) -> None:
     """Verifies real Amazon Ads Bulk .xlsx parsing, ID merge, min/max guardrails, and CLI export."""
     audit_amazon_flywheel(
@@ -199,6 +209,7 @@ def test_native_xlsx_ads_search_term_parsing(tmp_path: Path) -> None:
     assert recs[0].ad_orders == 10
 
 
+@requires_pro
 def test_kkt_water_filling_empirical_hill_and_walk_forward_backtest() -> None:
     """
     Verifies:
@@ -384,11 +395,12 @@ def test_production_license_gate_fail_closed_and_wheel_tags(
     with pytest.raises(ProLicenseError):
         validate_polar_key("AMZ_FW_PRO_FAKE_OFFLINE_KEY_9999")
 
-    # 2. Pro Cython functions must enforce runtime license gate
-    with pytest.raises(PermissionError):
-        amz_flywheel_pro.fit_keyword_elasticity(
-            [10, 12, 14, 16], [15, 16, 18, 20], [10.0, 8.0, 6.0, 5.0], [1000, 1000, 1000, 1000]
-        )
+    # 2. Pro Cython functions must enforce runtime license gate (when Pro binary is installed)
+    if amz_flywheel_pro is not None:
+        with pytest.raises(PermissionError):
+            amz_flywheel_pro.fit_keyword_elasticity(
+                [10, 12, 14, 16], [15, 16, 18, 20], [10.0, 8.0, 6.0, 5.0], [1000, 1000, 1000, 1000]
+            )
 
     # 3. require_pro() must wrap PermissionError as ProLicenseError
     with pytest.raises(ProLicenseError):
