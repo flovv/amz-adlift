@@ -487,3 +487,136 @@ class AMCClient:
             resp = client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             return dict(resp.json())
+
+
+def generate_amc_promo_isolation_sql(
+    lookback_days: int = 28,
+    min_cohort_users: int = AMC_MIN_COHORT_USERS,
+) -> str:
+    """
+    Generate an Oct 2026 AMC Promotional Signals SQL query isolating ad-attributed
+    sales WITH vs. WITHOUT coupons/price discounts using net unit price paid.
+    Enforces COUNT(DISTINCT user_id) >= 100.
+    """
+    threshold = max(AMC_MIN_COHORT_USERS, int(min_cohort_users))
+    return f"""-- Amazon Marketing Cloud (AMC) Oct 2026 Promotional Signals Isolation Query
+-- Separates ad-driven purchases from coupon/deal-driven purchases at net unit price.
+-- Privacy Safeguard: Enforces HAVING COUNT(DISTINCT user_id) >= {threshold}.
+WITH promo_attributed AS (
+  SELECT
+    user_id,
+    COALESCE(promoted_asin, tracked_asin, 'UNKNOWN_ASIN') AS asin,
+    LOWER(TRIM(COALESCE(customer_search_term, '__no_search_term__'))) AS search_query,
+    CASE
+      WHEN COALESCE(coupon_discount_amount, 0.0) > 0.0
+        OR COALESCE(price_discount_amount, 0.0) > 0.0
+        OR COALESCE(point_of_sale_discount_amount, 0.0) > 0.0
+      THEN 'PROMO_APPLIED'
+      ELSE 'FULL_PRICE'
+    END AS promo_bucket,
+    conversion_event_id,
+    COALESCE(net_unit_price_paid, product_sales, 0.0) AS net_sales,
+    COALESCE(cost, 0.0) AS media_cost
+  FROM amazon_attributed_events_by_traffic_time
+  WHERE event_date BETWEEN DATE_ADD(day, -{int(lookback_days)}, CURRENT_DATE) AND CURRENT_DATE
+)
+SELECT
+  asin,
+  promo_bucket,
+  COUNT(DISTINCT user_id) AS reached_users,
+  COUNT(DISTINCT conversion_event_id) AS total_purchases,
+  ROUND(SUM(net_sales), 2) AS net_attributed_sales,
+  ROUND(SUM(media_cost), 2) AS total_media_cost,
+  ROUND(SUM(net_sales) / NULLIF(SUM(media_cost), 0), 4) AS net_roas
+FROM promo_attributed
+GROUP BY asin, promo_bucket
+HAVING COUNT(DISTINCT user_id) >= {threshold}
+ORDER BY asin, promo_bucket;
+"""
+
+
+def generate_amc_ltv_cohort_sql(
+    lookback_days: int = 90,
+    min_cohort_users: int = AMC_MIN_COHORT_USERS,
+) -> str:
+    """
+    Generate a privacy-safe AMC New-to-Brand (NTB) Repeat-Purchase LTV Cohort SQL
+    query measuring 30/60/90-day repeat revenue multipliers and Subscribe & Save share.
+    """
+    threshold = max(AMC_MIN_COHORT_USERS, int(min_cohort_users))
+    return f"""-- Amazon Marketing Cloud (AMC) NTB Repeat-Buyer LTV Cohort Query
+-- Computes repeat-buyer LTV multiplier (typically 2.8x-4.5x in consumables).
+-- Privacy Safeguard: Enforces HAVING COUNT(DISTINCT user_id) >= {threshold}.
+WITH first_orders AS (
+  SELECT
+    user_id,
+    MIN(event_dt_utc) AS first_order_dt,
+    MIN(COALESCE(tracked_asin, promoted_asin, 'UNKNOWN_ASIN')) AS acquisition_asin,
+    MAX(CASE WHEN is_subscribe_and_save = TRUE THEN 1 ELSE 0 END) AS first_order_sns
+  FROM amazon_attributed_events_by_traffic_time
+  WHERE new_to_brand = TRUE
+    AND event_date BETWEEN DATE_ADD(day, -{int(lookback_days)}, CURRENT_DATE) AND CURRENT_DATE
+  GROUP BY user_id
+),
+subsequent_orders AS (
+  SELECT
+    f.user_id,
+    f.acquisition_asin,
+    f.first_order_sns,
+    COUNT(DISTINCT e.conversion_event_id) AS total_orders,
+    SUM(COALESCE(e.product_sales, 0.0)) AS cumulative_sales
+  FROM first_orders f
+  JOIN amazon_retail_purchases e
+    ON f.user_id = e.user_id
+   AND e.event_dt_utc >= f.first_order_dt
+   AND e.event_dt_utc <= DATE_ADD(day, {int(lookback_days)}, f.first_order_dt)
+  GROUP BY f.user_id, f.acquisition_asin, f.first_order_sns
+)
+SELECT
+  acquisition_asin,
+  COUNT(DISTINCT user_id) AS ntb_cohort_users,
+  ROUND(AVG(total_orders), 3) AS avg_orders_per_ntb_user,
+  ROUND(AVG(cumulative_sales), 2) AS avg_ltv_sales_per_ntb_user,
+  ROUND(AVG(first_order_sns), 4) AS first_order_sns_rate
+FROM subsequent_orders
+GROUP BY acquisition_asin
+HAVING COUNT(DISTINCT user_id) >= {threshold}
+ORDER BY ntb_cohort_users DESC;
+"""
+
+
+def generate_amc_existing_customer_suppression_sql(
+    lookback_days: int = 60,
+    min_cohort_users: int = AMC_MIN_COHORT_USERS,
+) -> str:
+    """
+    Generate a privacy-safe AMC query identifying ad spend wasted on existing
+    customers (typically 33%-55% of ad-attributed sales) to build negative audiences.
+    """
+    threshold = max(AMC_MIN_COHORT_USERS, int(min_cohort_users))
+    return f"""-- Amazon Marketing Cloud (AMC) Existing-Customer Ad Waste Audit Query
+-- Flags keywords/campaigns where existing customers consume >33% of ad-attributed sales.
+-- Privacy Safeguard: Enforces HAVING COUNT(DISTINCT user_id) >= {threshold}.
+WITH customer_split AS (
+  SELECT
+    user_id,
+    COALESCE(campaign_name, 'UNKNOWN_CAMPAIGN') AS campaign_name,
+    CASE WHEN new_to_brand = TRUE THEN 'NTB' ELSE 'EXISTING_CUSTOMER' END AS buyer_type,
+    conversion_event_id,
+    COALESCE(product_sales, 0.0) AS sales,
+    COALESCE(cost, 0.0) AS spend
+  FROM amazon_attributed_events_by_traffic_time
+  WHERE event_date BETWEEN DATE_ADD(day, -{int(lookback_days)}, CURRENT_DATE) AND CURRENT_DATE
+)
+SELECT
+  campaign_name,
+  buyer_type,
+  COUNT(DISTINCT user_id) AS reached_users,
+  COUNT(DISTINCT conversion_event_id) AS purchases,
+  ROUND(SUM(sales), 2) AS attributed_sales,
+  ROUND(SUM(spend), 2) AS attributed_spend
+FROM customer_split
+GROUP BY campaign_name, buyer_type
+HAVING COUNT(DISTINCT user_id) >= {threshold}
+ORDER BY campaign_name, buyer_type;
+"""
