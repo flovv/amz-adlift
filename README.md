@@ -52,8 +52,17 @@ amz-adlift report \
 
 # 3. Generate privacy-safe Amazon Marketing Cloud (AMC) SQL queries
 amz-adlift amc sql --days 28
+amz-adlift amc sql --template promo --days 28        # Oct 2026 Promotional Signals isolation
+amz-adlift amc sql --template ltv --days 90          # NTB repeat-buyer LTV cohorts
+amz-adlift amc sql --template suppression --days 60  # Existing-customer ad waste audit
 
-# 4. Start the local FastMCP stdio server (Claude Desktop / Cursor)
+# 4. Evaluate causal iROAS/LTV, pre-test MDE power, 2026 COSMO listing rules & Buy Box health
+amz-adlift iroas --inc-rev 1800 --inc-spend 1000 --margin 0.38 --ntb-share 0.70 --ltv-mult 3.0
+amz-adlift experiment-power --baseline "1000,1015,990,1005,1010,995" --expected-lift 0.08
+amz-adlift listing-audit --title "SleepWell Magnesium 400mg" --highlights "Sugar-free vegan capsules for adults"
+amz-adlift ops-health --buy-box 96.5 --promo-days 6 --days-supply 45
+
+# 5. Start the local FastMCP stdio server (Claude Desktop / Cursor)
 amz-adlift mcp
 ```
 

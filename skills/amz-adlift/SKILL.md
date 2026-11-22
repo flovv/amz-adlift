@@ -77,9 +77,28 @@ Check `attribution_window_gap` flags (when 7-day post-click Ads orders exceed sa
 
 - **AMC privacy-safe SQL & Markov attribution (Open Core):**
   ```bash
-  amz-adlift amc sql --days 28
+  amz-adlift amc sql --days 28                           # Paid-to-organic & NTB
+  amz-adlift amc sql --template promo --days 28          # Oct 2026 Promotional Signals isolation
+  amz-adlift amc sql --template ltv --days 90            # NTB repeat-buyer LTV cohort
+  amz-adlift amc sql --template suppression --days 60    # Existing-customer waste audit
   ```
   Or call MCP tool `analyze_amc_clean_room`.
+
+- **Causal iROAS, Experiment Power (MDE), 2026 COSMO Listing Audit & Operational Guardrails (Open Core):**
+  ```bash
+  # Evaluate causal iROAS, LTV break-even, existing-customer waste, and CPC ceiling
+  amz-adlift iroas --inc-rev 1800 --inc-spend 1000 --margin 0.38 --ntb-share 0.70 --ltv-mult 3.0 --cvr 0.12 --price 35
+
+  # Pre-test MDE & SNR power gate before running a geo/switchback/holdout test
+  amz-adlift experiment-power --baseline "1000,1015,990,1005,1010,995" --expected-lift 0.08 --periods 4
+
+  # Audit listing against July 2026 taxonomy (75-char Title, 125-char Item Highlights, deprecated backend)
+  amz-adlift listing-audit --title "..." --highlights "..." --backend "..."
+
+  # Check Buy Box (<95%), >30% promo-day dependency, and <30d FBA inventory curtailment
+  amz-adlift ops-health --buy-box 96.5 --promo-days 6 --days-supply 45
+  ```
+  Matching MCP tools: `evaluate_campaign_iroas`, `check_experiment_power`, `audit_listing_cosmo_2026`, and `check_operational_guardrails`.
 
 - **Pro-only optimization & execution** (requires `amz_adlift_pro` activated via `amz-adlift auth install-pro --key "AMZ_AL_PRO_..."`):
   - **Equimarginal budget reallocation (KKT water-filling):** `amz-adlift allocate --budget 1100` or MCP tool `optimize_budget_allocation`.

@@ -594,6 +594,7 @@
         <a href="#benefits">Benefits</a>
         <a href="#example">Interactive Example</a>
         <a href="#workflows">Workflows</a>
+        <a href="#toolkit">v0.2 Toolkit</a>
         <a href="#formats">Exports &amp; Math</a>
       </nav>
       <div class="nav-actions">
@@ -865,6 +866,48 @@ npx skills add flovv/amz-adlift
 # - Checks attribution_window_gap and AMC repeat-customer cannibalization flags
 # - Requires --existing-bulk plus --max-change / --min-bid / --max-bid guardrails</code></pre>
         </div>
+      </div>
+    </section>
+
+    <section id="toolkit">
+      <div class="container">
+        <h2>v0.2.0 Scientific Toolkit: iROAS, Geo-Experiments &amp; 2026 COSMO</h2>
+        <p class="section-lead">Beyond 4-quadrant keyword audits, <code>amz-adlift</code> ships pure-Python modules for causal iROAS/LTV economics, pre-test MDE power gates, Synthetic Control / Trimmed Match counterfactuals, 2026 listing compliance, and Buy Box guardrails.</p>
+
+        <div class="benefits-grid" style="margin-bottom: 28px;">
+          <div class="benefit-item">
+            <h3>Causal iROAS, LTV &amp; Oct 2026 AMC Promo SQL</h3>
+            <p>Computes first-order break-even (<code>1 / margin</code>), LTV-adjusted break-even, and <code>Target CPC = CVR &times; Target ACoS &times; Price</code>. Includes privacy-safe (<code>&ge;100</code> users) AMC SQL templates for Promotional Signals isolation, NTB LTV cohorts, and existing-customer suppression.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>MDE Power Gate, SCM &amp; Bayesian Calibration</h3>
+            <p>Blocks underpowered holdout/switchback tests before you waste media spend. Runs local Synthetic Control (with SUTVA buffer-zone exclusion), Trimmed Match iROAS estimation, and Meridian-style variance-inflated causal prior calibration.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>July 2026 Listing &amp; COSMO Intent Linter</h3>
+            <p>Enforces the 75-character title cap (preventing AI auto-rewrite), 125-character factual Item Highlights rules, orphaned deprecated backend keyword detection, and SQP-to-COSMO intent cluster gaps.</p>
+          </div>
+          <div class="benefit-item">
+            <h3>Buy Box, Promo-Day &amp; SQP Funnel Guardrails</h3>
+            <p>Parses Seller Central Business Reports to flag Buy Box &lt; 95%, promo-dependency &gt; 30% of days, &lt; 30-day FBA stockout curtailment, FBA vs. FBM net unit margin, and 3-stage SQP funnel bottlenecks (CTR, ATC, Checkout).</p>
+          </div>
+        </div>
+
+        <pre><code># Evaluate causal iROAS, LTV break-even &amp; sustainable CPC ceiling
+amz-adlift iroas --inc-rev 1800 --inc-spend 1000 --margin 0.38 --ntb-share 0.70 --ltv-mult 3.0 --cvr 0.12 --price 35
+
+# Pre-test MDE &amp; SNR power gate before launching a geo/switchback holdout
+amz-adlift experiment-power --baseline "1000,1015,990,1005,1010,995" --expected-lift 0.08 --periods 4
+
+# Audit listing against July 2026 taxonomy (75-char Title, 125-char Item Highlights, COSMO)
+amz-adlift listing-audit --title "SleepWell Magnesium 400mg" --highlights "Sugar-free vegan capsules for adults"
+
+# Check Buy Box (&lt;95%), &gt;30% promo-day penalty &amp; &lt;30d FBA stockout risk
+amz-adlift ops-health --buy-box 96.5 --promo-days 6 --days-supply 45
+
+# Print Oct 2026 AMC Promotional Signals &amp; LTV Cohort SQL (&gt;=100 users privacy floor)
+amz-adlift amc sql --template promo --days 28
+amz-adlift amc sql --template ltv --days 90</code></pre>
       </div>
     </section>
 
