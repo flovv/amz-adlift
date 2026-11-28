@@ -32,6 +32,7 @@ from amz_adlift.io.amc_connector import (
     generate_amc_promo_isolation_sql,
 )
 from amz_adlift.io.business_report_parser import parse_business_report_csv
+from amz_adlift.reporting.html_report import generate_html_audit_report
 
 
 def test_phase1_iroas_ltv_and_amc_sql() -> None:
@@ -228,3 +229,61 @@ def test_phase4_buybox_fba_business_report_and_funnel_bottlenecks(tmp_path: Path
     assert len(diags) == 1
     assert diags[0].bottleneck == "CTR_MAIN_IMAGE_OR_PRICE"
     assert diags[0].trust_tier == "BELOW_4_3_VISIBILITY_PENALTY"
+
+
+def test_html_report_renders_operational_health_and_funnel_bottlenecks(tmp_path: Path) -> None:
+    """Verifies white-label HTML report renders v0.2.0 Operational Health & SQP Funnel sections."""
+    ops = evaluate_buybox_and_promo_health(
+        buy_box_pct=91.0, promo_days_last_30=12, days_of_inventory_supply=20
+    )
+    row = UnifiedKeywordWeek(
+        asin="B08XYZ123",
+        search_query="magnesium glycinate",
+        week_start=date(2026, 10, 4),
+        search_volume=10000,
+        sqp_impressions=5000,
+        sqp_clicks=25,
+        sqp_cart_adds=10,
+        sqp_purchases=5,
+        total_market_clicks=500,
+        total_market_purchases=60,
+        ad_impressions=1000,
+        ad_clicks=10,
+        ad_spend=20.0,
+        ad_orders=2,
+        ad_sales=70.0,
+        organic_clicks=15,
+        organic_orders=3,
+    )
+    bottlenecks = [d.model_dump(mode="json") for d in diagnose_sqp_funnel_bottlenecks([row])]
+
+    out_html = tmp_path / "v02_report.html"
+    generate_html_audit_report(
+        audit_report={
+            "asin": "B08XYZ123",
+            "category": "supplements",
+            "product_margin": 0.38,
+            "pro_enabled": False,
+            "quadrant_counts": {"TREADMILL_DEAD_WEIGHT": 1},
+            "red_team_warnings": ["OPERATIONAL: BUY_BOX_DEGRADED"],
+            "keywords": [
+                {
+                    "asin": "B08XYZ123",
+                    "search_query": "magnesium glycinate",
+                    "quadrant": "TREADMILL_DEAD_WEIGHT",
+                    "median_organic_rank_4w": 22.0,
+                    "weekly_ad_spend_avg": 20.0,
+                    "red_team_flags": [],
+                    "diagnostic_summary": "Low CTR",
+                }
+            ],
+            "operational_health": ops.model_dump(mode="json"),
+            "funnel_bottlenecks": bottlenecks,
+        },
+        output_path=out_html,
+    )
+    rendered = out_html.read_text(encoding="utf-8")
+    assert "Operational Health" in rendered
+    assert "BUY_BOX_DEGRADED" in rendered
+    assert "SQP 3-Stage Funnel Bottlenecks" in rendered
+    assert "CTR_MAIN_IMAGE_OR_PRICE" in rendered

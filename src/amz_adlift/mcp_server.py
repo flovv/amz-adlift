@@ -15,7 +15,10 @@ from amz_adlift.contracts.schemas import (
     KeywordQuadrantDiagnostic,
     UnifiedKeywordWeek,
 )
+from amz_adlift.core.buybox_guard import evaluate_buybox_and_promo_health
+from amz_adlift.core.cosmo_intent import cluster_panel_by_cosmo_intent
 from amz_adlift.core.quadrants import classify_panel
+from amz_adlift.core.trust_signals import diagnose_sqp_funnel_bottlenecks
 from amz_adlift.io.aligner import ingest_and_align
 from amz_adlift.io.amc_connector import (
     compute_markov_removal_effects,
@@ -26,6 +29,7 @@ from amz_adlift.io.bulksheet_parser import (
     merge_bulksheet_ids,
     parse_ads_bulksheet,
 )
+from amz_adlift.io.business_report_parser import parse_business_report_csv
 from amz_adlift.io.sqp_parser import normalize_query
 from amz_adlift.pro.bridge import (
     enrich_with_pro_elasticity,
@@ -92,6 +96,8 @@ _LAST_AUDIT_STATE: dict[str, Any] = {
     "pro_metrics": {},
     "category": "general",
     "product_margin": 0.35,
+    "operational_health": None,
+    "funnel_bottlenecks": [],
 }
 
 
@@ -116,6 +122,8 @@ def _persist_audit_state() -> None:
         serializable = {
             "category": _LAST_AUDIT_STATE.get("category", "general"),
             "product_margin": _LAST_AUDIT_STATE.get("product_margin", 0.35),
+            "operational_health": _LAST_AUDIT_STATE.get("operational_health"),
+            "funnel_bottlenecks": _LAST_AUDIT_STATE.get("funnel_bottlenecks", []),
             "panel": [
                 r.model_dump(mode="json") for r in _LAST_AUDIT_STATE.get("panel", [])
             ],
@@ -144,6 +152,8 @@ def _ensure_audit_state_loaded() -> bool:
         raw = json.loads(cache_file.read_text(encoding="utf-8"))
         _LAST_AUDIT_STATE["category"] = str(raw.get("category", "general"))
         _LAST_AUDIT_STATE["product_margin"] = float(raw.get("product_margin", 0.35))
+        _LAST_AUDIT_STATE["operational_health"] = raw.get("operational_health")
+        _LAST_AUDIT_STATE["funnel_bottlenecks"] = list(raw.get("funnel_bottlenecks", []))
         _LAST_AUDIT_STATE["panel"] = [
             UnifiedKeywordWeek.model_validate(item) for item in raw.get("panel", [])
         ]
@@ -269,6 +279,41 @@ def audit_amazon_flywheel(
             description="Whether to include the full weekly `panel` array in the returned JSON. Set to False on large accounts (500+ keywords) to save LLM context tokens.",
         ),
     ] = True,
+    biz_report_csv_path: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="Optional local path to Seller Central Detail Page Sales & Traffic Business Report CSV for Buy Box guardrails.",
+        ),
+    ] = None,
+    cluster_intent: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="If True, also aggregate sparse keywords into COSMO semantic intent clusters.",
+        ),
+    ] = False,
+    promo_days_last_30: Annotated[
+        int,
+        Field(
+            default=0,
+            description="Number of promotional days in the last 30 days (flags >30% promo-dependency risk).",
+        ),
+    ] = 0,
+    days_of_inventory_supply: Annotated[
+        Optional[float],
+        Field(
+            default=None,
+            description="Optional current FBA days of inventory supply (flags <30d curtailment risk).",
+        ),
+    ] = None,
+    star_rating: Annotated[
+        Optional[float],
+        Field(
+            default=None,
+            description="Optional ASIN review star rating (evaluates 4.7+ high visibility vs <4.3 penalty).",
+        ),
+    ] = None,
 ) -> dict[str, Any]:
     """
     Joins Brand Analytics SQP, Amazon Ads Search Term, Organic Rank, and optional AMC
@@ -310,6 +355,35 @@ def audit_amazon_flywheel(
     unique_weeks = len({r.week_start for r in panel})
     primary_asin = panel[0].asin if panel else "UNKNOWN_ASIN"
 
+    funnel_bottlenecks = [
+        d.model_dump(mode="json")
+        for d in diagnose_sqp_funnel_bottlenecks(panel, star_rating=star_rating)
+    ]
+
+    operational_health: Optional[dict[str, Any]] = None
+    if biz_report_csv_path:
+        biz_records = parse_business_report_csv(biz_report_csv_path)
+        if biz_records:
+            matched_rec = next(
+                (r for r in biz_records if r.asin.upper() == primary_asin.upper()),
+                biz_records[0],
+            )
+            ops = evaluate_buybox_and_promo_health(
+                buy_box_pct=matched_rec.buy_box_pct,
+                promo_days_last_30=promo_days_last_30,
+                days_of_inventory_supply=days_of_inventory_supply,
+            )
+            operational_health = ops.model_dump(mode="json")
+            for flag in ops.flags:
+                red_team_warnings.append(f"OPERATIONAL: {flag}")
+
+    cosmo_clusters: list[dict[str, Any]] = []
+    if cluster_intent:
+        cosmo_clusters = [
+            c.model_dump(mode="json")
+            for c in cluster_panel_by_cosmo_intent(panel, category=norm_category)
+        ]
+
     report = AuditReport(
         asin=primary_asin,
         category=norm_category,
@@ -321,6 +395,9 @@ def audit_amazon_flywheel(
         red_team_warnings=red_team_warnings,
         keywords=enriched_diagnostics,
         panel=panel if include_raw_panel else [],
+        operational_health=operational_health,
+        funnel_bottlenecks=funnel_bottlenecks,
+        cosmo_intent_clusters=cosmo_clusters,
     )
 
     _LAST_AUDIT_STATE["panel"] = panel
@@ -328,6 +405,8 @@ def audit_amazon_flywheel(
     _LAST_AUDIT_STATE["pro_metrics"] = pro_map
     _LAST_AUDIT_STATE["category"] = norm_category
     _LAST_AUDIT_STATE["product_margin"] = norm_margin
+    _LAST_AUDIT_STATE["operational_health"] = operational_health
+    _LAST_AUDIT_STATE["funnel_bottlenecks"] = funnel_bottlenecks
     _persist_audit_state()
 
     output = report.model_dump(mode="json")
@@ -740,6 +819,8 @@ def generate_audit_report(
         "quadrant_counts": quad_counts,
         "red_team_warnings": red_team_warnings,
         "keywords": kw_dicts,
+        "operational_health": _LAST_AUDIT_STATE.get("operational_health"),
+        "funnel_bottlenecks": _LAST_AUDIT_STATE.get("funnel_bottlenecks", []),
     }
 
     alloc_report: Optional[dict[str, Any]] = None

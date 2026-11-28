@@ -58,6 +58,21 @@ def audit_command(
     amc: Optional[Path] = typer.Option(
         None, "--amc", help="Optional path to exported AMC Clean Room NTB/Halo CSV."
     ),
+    biz_report: Optional[Path] = typer.Option(
+        None, "--biz-report", help="Optional path to Seller Central Detail Page Sales & Traffic Business Report CSV."
+    ),
+    cluster_intent: bool = typer.Option(
+        False, "--cluster-intent", help="Aggregate sparse keywords into COSMO intent clusters."
+    ),
+    promo_days: int = typer.Option(
+        0, "--promo-days", help="Number of promotional days in the last 30 days (flags >30% dependency)."
+    ),
+    days_supply: Optional[float] = typer.Option(
+        None, "--days-supply", help="Current FBA days of inventory supply (flags <30d curtailment risk)."
+    ),
+    star_rating: Optional[float] = typer.Option(
+        None, "--star-rating", help="Optional listing star rating (evaluates 4.7+ vs <4.3 visibility tier)."
+    ),
     category: str = typer.Option("general", "--category", help="Product category prior name."),
     margin: float = typer.Option(0.35, "--margin", help="Pre-ad unit gross margin (0.0 - 1.0)."),
     out: Optional[Path] = typer.Option(
@@ -72,6 +87,11 @@ def audit_command(
         amc_csv_path=str(amc) if amc is not None else None,
         category=category,
         product_margin=margin,
+        biz_report_csv_path=str(biz_report) if biz_report is not None else None,
+        cluster_intent=cluster_intent,
+        promo_days_last_30=promo_days,
+        days_of_inventory_supply=days_supply,
+        star_rating=star_rating,
     )
     serialized = json.dumps(report, indent=2)
     if out is not None:

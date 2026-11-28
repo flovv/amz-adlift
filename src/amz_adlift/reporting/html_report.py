@@ -41,6 +41,8 @@ def generate_html_audit_report(
     keywords: list[dict[str, Any]] = list(audit_report.get("keywords", []))
     red_team_warnings: list[str] = list(audit_report.get("red_team_warnings", []))
     quad_counts: dict[str, int] = dict(audit_report.get("quadrant_counts", {}))
+    operational_health: Optional[dict[str, Any]] = audit_report.get("operational_health")
+    funnel_bottlenecks: list[dict[str, Any]] = list(audit_report.get("funnel_bottlenecks") or [])
 
     alloc_by_kw: dict[str, dict[str, Any]] = {}
     if allocation_report and allocation_report.get("allocations"):
@@ -149,6 +151,82 @@ def generate_html_audit_report(
         <section class="card alert-card">
           <h2>Adversarial Red-Team Econometric Warnings ({len(red_team_warnings)})</h2>
           <ul>{items_li}</ul>
+        </section>
+        """
+
+    ops_health_html = ""
+    if operational_health:
+        bb_pct = float(operational_health.get("buy_box_pct", 0.0))
+        promo_share = float(operational_health.get("promo_day_share", 0.0)) * 100.0
+        dos = operational_health.get("days_of_inventory_supply")
+        dos_str = f"{float(dos):.0f} days" if dos is not None else "—"
+        allow_inc = bool(operational_health.get("allow_bid_increases", True))
+        bid_status = (
+            '<span class="pos">ALLOWED</span>'
+            if allow_inc
+            else '<span class="neg">CAPPED / FROZEN</span>'
+        )
+        ops_flags = operational_health.get("flags") or []
+        ops_recs = operational_health.get("recommendations") or []
+        flags_line = (
+            " &middot; ".join(html.escape(str(f)) for f in ops_flags)
+            if ops_flags
+            else "All operational guardrails healthy"
+        )
+        recs_li = "".join(f"<li>{html.escape(str(r))}</li>" for r in ops_recs)
+        recs_block = f'<ul style="margin:8px 0 0;padding-left:18px;font-size:12.5px;">{recs_li}</ul>' if recs_li else ""
+        ops_health_html = f"""
+        <section class="card" id="operational-health-card">
+          <h2>Operational Health &amp; Buy Box Guardrails</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:20px;font-size:13px;">
+            <div><span class="muted">Featured Offer (Buy Box):</span> <strong>{bb_pct:.1f}%</strong></div>
+            <div><span class="muted">Promo Days (30d):</span> <strong>{promo_share:.1f}%</strong></div>
+            <div><span class="muted">FBA Days of Supply:</span> <strong>{dos_str}</strong></div>
+            <div><span class="muted">Automated Bid Hikes:</span> {bid_status}</div>
+            <div><span class="muted">Status:</span> <code>{flags_line}</code></div>
+          </div>
+          {recs_block}
+        </section>
+        """
+
+    funnel_html = ""
+    if funnel_bottlenecks:
+        f_rows = []
+        for fb in funnel_bottlenecks:
+            f_rows.append(
+                f"""
+                <tr>
+                  <td><strong>{html.escape(str(fb.get('search_query', '')))}</strong></td>
+                  <td class="num">{float(fb.get('brand_ctr', 0.0)) * 100:.2f}%</td>
+                  <td class="num">{float(fb.get('brand_atc_rate', 0.0)) * 100:.1f}%</td>
+                  <td class="num">{float(fb.get('brand_checkout_rate', 0.0)) * 100:.1f}%</td>
+                  <td class="num">{float(fb.get('cvr_index_vs_market', 1.0)):.2f}x</td>
+                  <td><code>{html.escape(str(fb.get('bottleneck', 'HEALTHY')))}</code></td>
+                  <td class="muted">{html.escape(str(fb.get('recommendation', '')))}</td>
+                </tr>
+                """
+            )
+        funnel_html = f"""
+        <section class="card" id="sqp-funnel-card">
+          <h2>SQP 3-Stage Funnel Bottlenecks</h2>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Search Query</th>
+                  <th class="num">CTR</th>
+                  <th class="num">ATC Rate</th>
+                  <th class="num">Checkout</th>
+                  <th class="num">CVR vs. Mkt</th>
+                  <th>Bottleneck</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {''.join(f_rows)}
+              </tbody>
+            </table>
+          </div>
         </section>
         """
 
@@ -474,6 +552,10 @@ def generate_html_audit_report(
     <div class="pills">{quad_badges_html}</div>
 
     {warnings_html}
+
+    {ops_health_html}
+
+    {funnel_html}
 
     <section class="charts-grid">
       <div class="card">

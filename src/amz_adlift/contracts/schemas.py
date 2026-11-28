@@ -138,3 +138,6 @@ class AuditReport(BaseModel):
     red_team_warnings: list[str] = Field(default_factory=list)
     keywords: list[KeywordQuadrantDiagnostic]
     panel: list[UnifiedKeywordWeek]
+    operational_health: Optional[dict[str, Any]] = None
+    funnel_bottlenecks: list[dict[str, Any]] = Field(default_factory=list)
+    cosmo_intent_clusters: list[dict[str, Any]] = Field(default_factory=list)
